@@ -1,0 +1,5 @@
+```txt
+<branch> | <type>(<scope>): <short description>
+
+<detailed description, if needed>
+```
