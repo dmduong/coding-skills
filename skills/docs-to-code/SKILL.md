@@ -41,6 +41,10 @@ Không bao giờ tự sinh lại toàn bộ code khi chế độ không phải T
 3. Ở chế độ ĐỒNG BỘ, chỉ gọi các skill con thuộc tầng có khác biệt (theo bảng ánh xạ ở mục 5.3 của profile-contract), giữ thứ tự trên, và truyền danh sách thay đổi đã xác nhận.
 4. Skill tổng không tự định nghĩa lại quy tắc codegen và không sinh code trực tiếp ngoài việc điều phối skill con. Việc ghi snapshot/manifest sau khi chạy xong là phần duy nhất skill tổng tự thực hiện.
 
+## Nhận diện `Processing Flow > Detail`
+
+Theo template hiện tại, mỗi bước xử lý là một khối HTML `<details>` nằm trong mục `### Detail`. Đọc số bước và hành động từ `<summary>` theo mẫu `Step [step_no]: [action_step]`; đọc `Target`, `Details`, `Output`, `Next` và `On failure` từ nội dung bên trong khối. Vẫn chấp nhận các wiki đã tạo theo mẫu cũ có `Step: [step_no] | Action: [action_step] | Next: [next_step]` trong `<summary>` hoặc dùng tiêu đề Markdown `#### Step <N>: <Action>`.
+
 ## Cấu trúc thư mục
 
 ```text

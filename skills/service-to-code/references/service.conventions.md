@@ -19,7 +19,7 @@ Service hiện thực logic xử lý của một API: mỗi dòng trong bảng `
 | `Endpoint` (Module, Handler)                | Tên Service và method (nếu wiki không có, dùng giá trị suy ra theo `SKILL.md`) |
 | `Request`                                   | Tên và kiểu tham số của method                                    |
 | `Processing Flow > Entity/Schema`           | Các bảng cần inject và liên kết đến tài liệu cấu trúc bảng        |
-| `Processing Flow > Detail`                  | Các khối `#### Step N: Action` (các bước xử lý)                   |
+| `Processing Flow > Detail`                  | Mỗi khối `<details>` là một bước; tiêu đề và metadata nằm trong `<summary>` |
 | `Response > Error`                          | Status và thông báo lỗi cho từng bước (cột `Raised at`)           |
 | `Response > Success` (bảng Property ngay dưới bảng Status) | Hình dạng của giá trị trả về            |
 
@@ -29,13 +29,21 @@ Service hiện thực logic xử lý của một API: mỗi dòng trong bảng `
 
 ## Step 3.2: Đọc các khối Detail
 
-Mỗi bước là một khối `#### Step <N>: <Action>` (tiêu đề cho số bước và `Action`), theo sau là danh sách `Target`, `Details` (có thể gồm nhiều gạch đầu dòng), `Output`, `Next`, `On failure`.
+Theo template hiện tại, mỗi bước là một khối HTML `<details>` trong `### Detail`. Đọc `step_no` và `action_step` từ `<summary>` theo mẫu `Step [step_no]: [action_step]`. Phần nội dung trong khối cung cấp `Target`, `Details` (có thể gồm nhiều gạch đầu dòng), `Output`, `Next` và `On failure`. Mỗi khối `<details>` tương ứng đúng một bước. Để tương thích với wiki cũ, cũng nhận diện mẫu `<summary>` `Step: [step_no] | Action: [action_step] | Next: [next_step]` hoặc tiêu đề `#### Step <N>: <Action>`; với mẫu cũ, `Next` có thể nằm trong `<summary>` hoặc trong nội dung khối.
 
 - `Target`: bảng hoặc biến chịu tác động của bước.
 - `Details`: gộp tất cả gạch đầu dòng con để hiểu điều kiện, phép gán field và điều kiện lỗi.
 - `Output`: tên biến chứa kết quả của bước. Dùng đúng tên này (`const <Output> = ...`).
-- `Next`: bước kế tiếp. Có thể chỉ định nhánh có điều kiện ("Step 5 if ..., Step 7 otherwise"); hiện thực bằng `if/else` hoặc return sớm.
+- `Next`: bước kế tiếp lấy từ trường `Next` trong nội dung khối của template hiện tại, hoặc từ `<summary>` nếu dùng mẫu cũ. Có thể chỉ định nhánh có điều kiện ("Step 5 if ..., Step 7 otherwise"); hiện thực bằng `if/else` hoặc return sớm.
 - `On failure`: lỗi cần ném khi bước thất bại. Đối chiếu với `Response > Error` bằng số bước trong cột `Raised at` để lấy HTTP status; dùng đúng thông báo trong wiki.
+
+## Giá trị nghiệp vụ dùng chung
+
+- Trước khi đưa giá trị nghiệp vụ đã xác nhận vào điều kiện Service (ví dụ `document.type` bằng `PDF` được xác nhận là `1`), tìm enum hoặc constant dùng chung hiện có trong source.
+- Nếu đã có member tương ứng, dùng member đó; không so sánh trực tiếp bằng magic number/string và không tạo bản sao.
+- Nếu chưa có member, thêm giá trị vào enum/constant dùng chung phù hợp theo cấu trúc dự án, rồi import và dùng member trong Service. Không tự tạo enum/constant riêng trong Service.
+- Chỉ thêm mapping mà wiki hoặc người dùng đã xác nhận. Nếu chưa rõ giá trị, nơi dùng chung phù hợp, hoặc mapping mâu thuẫn với source/profile, dừng và hỏi; không đoán hay mở rộng enum từ các giá trị chưa được giải nghĩa.
+- Không áp dụng máy móc cho giá trị vốn là dữ liệu động từ request/database hoặc literal vốn có ý nghĩa riêng như `null`; mục tiêu là các mã/trạng thái nghiệp vụ có tên.
 
 Phân loại `Action` bằng các từ khóa bên dưới (không phân biệt hoa thường, tiếng Việt hoặc tiếng Anh). Nếu không thể phân loại action, hãy hỏi người dùng; không đoán.
 
@@ -145,4 +153,3 @@ Nêu ngắn gọn bằng chứng dự án dùng TypeORM, các file đã tạo ho
 - Không thêm bước, điều kiện, field hay transaction không có trong wiki (hoặc yêu cầu của người dùng).
 - Không trả về toàn bộ Entity.
 - Không sửa file wiki.
-

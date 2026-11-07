@@ -37,6 +37,7 @@ Khóa mục `3.2.x` gồm các thư mục guard, filter, pipe, decorator, enum, 
 
 - Một wiki = một API = một handler. Không tự thêm field, bước, điều kiện, transaction hay Swagger decorator mà wiki hoặc profile không yêu cầu.
 - Không suy đoán ràng buộc, thông báo hoặc cấu hình mà wiki không nêu; hỏi người dùng. Giữ nguyên thông báo lỗi của wiki, từng ký tự.
+- Trong `Processing Flow > Detail`, nhận diện từng bước bằng mỗi khối `<details>`; theo template hiện tại, lấy số bước và `Action` từ `<summary>` theo mẫu `Step [step_no]: [action_step]`, và lấy `Target`, `Details`, `Output`, `Next`, `On failure` từ phần nội dung của khối. Để tương thích, vẫn đọc wiki cũ có `Step: [step_no] | Action: [action_step] | Next: [next_step]` trong `<summary>` hoặc tiêu đề `#### Step <N>: <Action>`.
 - Một file một class chính (DTO, RO, Service, Controller). Chỉ import những gì được dùng.
 - Khai báo kiểu tường minh cho tham số và kiểu trả về. Mỗi hàm (kể cả hàm con) tối đa khoảng 30 dòng; mỗi bước xử lý tách thành hàm con `private async` riêng (động từ + đối tượng).
 - Service đánh dấu mỗi bước bằng `// Step N: <mô tả ngắn>` để đối chiếu wiki. Các comment khác chỉ khi cần làm rõ.
