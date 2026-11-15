@@ -6,12 +6,14 @@ Quy tắc chi tiết: [`references/ro-exception.conventions.md`](../references/r
 
 | Placeholder | Nguồn | Ý nghĩa |
 | --- | --- | --- |
-| `{RoClass}` | `1.3.3` | Tên class RO (hậu tố `RO` hoặc `Ro`) |
-| `{roFile}`, `{roDir}` | `1.2.6`, `3.1.4` | Tên file và thư mục RO |
+| `{RoClass}` | Quy ước dự án | Tên response class |
+| `{roFile}`, `{roDir}` | Cấu trúc dự án | Tên file và thư mục response |
 | `{property}`, `{Type}` | Wiki `Response > Success`, bảng Property | Tên và kiểu property |
 | `{NestedRO}` | Wiki (property object hoặc mảng object) | Class lồng nhau |
 
 ## Khung
+
+Ví dụ này chỉ áp dụng nếu dự án dùng `class-transformer`; nếu không, theo serializer hiện có hoặc map object tường minh.
 
 ```ts
 import { Expose, Type } from 'class-transformer';
@@ -23,22 +25,9 @@ export class {RoClass} {
 }
 ```
 
-Quy tắc riêng của skill:
-
-- Chỉ khai báo property có trong bảng Property của wiki; mỗi property có `@Expose()`.
-- Property là object hoặc mảng object: thêm `@Type(() => {NestedRO})` và khai báo class lồng nhau trong cùng file.
-- Kiểu `id` theo Entity và wiki (`number` hoặc `string` cho UUID).
-
 ## Chuyển Entity sang RO
 
-Dùng `plainToInstance({RoClass}, data, { excludeExtraneousValues: true })` (quy tắc riêng của skill). **Nơi gọi** theo khóa `3.3.4`:
-
-| `3.3.4` | Nơi gọi |
-| --- | --- |
-| Controller chuyển sang RO | Controller, bọc kết quả Service (xem [`controller.templates.md`](./controller.templates.md)) |
-| Service trả RO | Service, ở bước `Return` (xem [`service.templates.md`](./service.templates.md)) |
-
-Nếu dự án bọc phản hồi bằng cơ chế riêng (khóa `3.3.x`, ví dụ helper của `BaseService`), đặt kết quả `plainToInstance` vào bên trong cơ chế đó.
+Áp dụng quy tắc và chọn nơi chuyển theo [`ro-exception.conventions.md`](../references/ro-exception.conventions.md#step-42-kết-nối-ro-với-service). Ví dụ theo tầng: [`controller.templates.md`](../../controller-to-code/assets/controller.templates.md) và [`service.templates.md`](../../service-to-code/assets/service.templates.md).
 
 ## Ví dụ đã điền (chỉ minh họa)
 

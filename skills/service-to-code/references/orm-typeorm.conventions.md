@@ -1,14 +1,14 @@
 # Thao tác dữ liệu với MySQL / TypeORM
 
-Đọc trước [`profile-contract.md`](../../docs-to-code/rules/profile-contract.md). Khóa profile: `2.1.4` (ORM/driver), `1.2.4`, `3.3.1`, `2.2.5` (tầng Repository), `3.3.5` (transaction), `4.4.8` (lỗi trùng khóa).
+Đọc trước [`workflow.md`](../../docs-to-code/rules/workflow.md); chỉ áp dụng tài liệu này khi dự án thực sự dùng TypeORM.
 
 Ví dụ: [`assets/orm-typeorm.templates.md`](../assets/orm-typeorm.templates.md).
 
-File này chỉ chứa **cú pháp và cách chọn API của TypeORM**. Cấu trúc Service, đọc Detail, lỗi và giá trị trả về nằm ở [`service.conventions.md`](./service.conventions.md). Service không truy vấn trực tiếp: khi khóa `1.2.4`/`3.3.1` cho biết dự án có tầng Repository, Service gọi method của Repository, và thao tác chưa có thì thêm vào Repository theo `2.2.5`. Các ví dụ `repo.xxx` dưới đây là code nằm **bên trong Repository** (hoặc trong Service khi dự án không có tầng Repository).
+File này chỉ chứa **cú pháp và cách chọn API của TypeORM**. Cấu trúc Service, đọc Detail, lỗi và giá trị trả về nằm ở [`service.conventions.md`](./service.conventions.md). Nếu dự án có tầng Repository, Service gọi method của Repository; thao tác chưa có thì thêm theo mẫu dự án. Các ví dụ `repo.xxx` nằm trong Repository hoặc Service khi dự án không có tầng Repository.
 
 ## 1. Xác nhận dự án dùng TypeORM
 
-Không đoán. Đối chiếu khóa `2.1.4` với `package.json` và code hiện có (Glob/Grep, các file `*.entity.ts`). Nếu khóa là ORM hoặc thư viện khác (Prisma, Sequelize, MikroORM, `mysql2` thuần, v.v.), `N/A` hoặc không khớp source, hãy dừng lại và hỏi người dùng. Không tự chuyển sang cách tiếp cận khác; nếu có file `orm-<tên>.conventions.md` tương ứng thì dùng file đó.
+Không đoán. Đối chiếu `package.json` và source (`*.entity.ts`, module, repository). Nếu dự án dùng ORM khác, theo mẫu và API thực tế của ORM đó; không dùng ví dụ TypeORM. Nếu không xác minh được, dừng và hỏi.
 
 ## 2. Tìm Entity và tên property
 
@@ -48,7 +48,8 @@ Cả hai đều là Action `Find` (một bản ghi hoặc nhiều bản ghi); ch
 - Điều kiện chỉ nằm trên bảng chính, hoặc chỉ cần nạp quan hệ: dùng `findOne({ where, relations })`.
 - Dùng QueryBuilder khi cần một trong các điều sau: điều kiện trên cột của bảng quan hệ, `innerJoin` để loại bản ghi không có quan hệ khớp, hoặc chọn cột cụ thể để không lộ field nhạy cảm (mật khẩu, token).
 - Dùng `innerJoin`/`leftJoin` (không `...AndSelect`) khi đã có `.select([...])`, vì `select` sau sẽ ghi đè phần select của join.
-- QueryBuilder chỉ nằm trong Repository, không viết trong Service.
+- Nếu dự án có tầng Repository, QueryBuilder nằm trong Repository; nếu không, theo cấu trúc dữ liệu hợp lệ của dự án.
+- Truyền giá trị qua named parameters; không nối dữ liệu người dùng vào SQL.
 
 
 ## 4. Chọn `save` hay `insert`
@@ -58,8 +59,8 @@ Cả hai đều là Action `Find` (một bản ghi hoặc nhiều bản ghi); ch
 | | `save` | `insert` |
 | --- | --- | --- |
 | SQL | Có thể `SELECT` trước (khi object có `id`) rồi `INSERT` hoặc `UPDATE` | Một câu `INSERT` |
-| Giá trị trả về | Entity đầy đủ (`id`, giá trị mặc định, cột ngày tự sinh) | `InsertResult` (`identifiers`, `generatedMaps`), không phải entity |
-| Hook / subscriber | Chạy `@BeforeInsert`, `@AfterInsert` và subscriber | Không chạy |
+| Giá trị trả về | Entity đã lưu; field tự sinh có được nạp hay không tùy driver và cấu hình | `InsertResult` (`identifiers`, `generatedMaps`), không phải entity |
+| Hook / subscriber | Có thể chạy listener và subscriber theo cấu hình | Có thể phát sự kiện insert; listener của entity còn phụ thuộc kiểu object và cấu hình |
 | Cascade quan hệ | Có | Không |
 | Hiệu năng | Chậm hơn | Nhanh hơn, phù hợp chèn hàng loạt |
 | Khi trùng khóa | Object có sẵn `id` thì thành `UPDATE`, có thể ghi đè ngầm | Luôn là `INSERT`, trùng thì ném `ER_DUP_ENTRY` |
@@ -68,16 +69,16 @@ Cách chọn:
 
 - Chỉ tạo **một** bản ghi và Step sau cần dùng nó (lấy `id` để tạo bản ghi con, dựng RO): dùng `save(create(...))`.
 - Tạo **nhiều** bản ghi (ví dụ danh sách `user_role`), hoặc không cần dùng lại kết quả: dùng `insert`.
-- Bảng cần hook (`@BeforeInsert`...) hoặc cascade quan hệ: dùng `save`.
+- Bảng cần cascade quan hệ: dùng `save`. Nếu phụ thuộc hook hoặc subscriber, xác minh hành vi với phiên bản TypeORM, kiểu object và cấu hình dự án; không giả định `insert` luôn bỏ qua chúng.
 - Wiki chỉ nói "tạo mới" và không cần kết quả: ưu tiên `insert`, vì không thể biến thành `UPDATE` ngoài ý muốn.
 - Cần `id` sau `insert`: lấy `result.identifiers[0].id`; không giả định kết quả là entity.
-- Khi dự án đã có method Repository cho thao tác tạo (khóa `1.2.4`/`3.3.1`), gọi method đó; chỉ thêm method mới vào Repository khi chưa có, theo `2.2.5`.
+- Khi dự án đã có method Repository phù hợp, gọi method đó; chỉ thêm method mới khi chưa có.
 - Trong transaction, `save` và `insert` đều phải đi qua `queryRunner.manager`; không gọi trực tiếp trên `repo`.
-- Cả hai đều ném lỗi `ER_DUP_ENTRY` khi trùng khóa duy nhất; xử lý theo khóa `4.4.8`.
+- Với MySQL, xử lý lỗi `ER_DUP_ENTRY` theo wiki và cơ chế dự án; không giả định mã này cho driver khác.
 
 ## 5. Transaction bằng `QueryRunner`
 
-Nguyên tắc chung (khi nào dùng transaction, bước nào nằm trong, rollback, ném lỗi, cách tách hàm) nằm ở mục "Transaction" của [`service.conventions.md`](./service.conventions.md). Phần này chỉ là cú pháp khi khóa `3.3.5` là `QueryRunner`; cơ chế khác (`dataSource.transaction`, helper của dự án) thì giữ nguyên các nguyên tắc chung.
+Nguyên tắc chung nằm ở mục "Transaction" của [`service.conventions.md`](./service.conventions.md). Phần này chỉ là cú pháp `QueryRunner`; với cơ chế khác (`dataSource.transaction`, helper dự án), dùng API tương ứng.
 
 - Inject `DataSource` vào constructor của Service nếu chưa có.
 - Vòng đời: `createQueryRunner()` → `connect()` → `startTransaction()` → `try { ghi...; commitTransaction() } catch { rollbackTransaction(); throw error } finally { release() }`.

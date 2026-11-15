@@ -2,20 +2,20 @@
 
 Quy tắc chi tiết: [`references/dto.conventions.md`](../references/dto.conventions.md).
 
-Template này là **khung**. Phần trong `{...}` là placeholder phải điền từ profile (số khóa ghi bên cạnh) hoặc từ wiki. Không chép nguyên ví dụ ở cuối.
+Template này là **khung** cho dự án dùng class-validator/class-transformer. Điền placeholder từ wiki và quy ước dự án đã khảo sát; không chép nguyên ví dụ.
 
 ## Bảng placeholder
 
 | Placeholder | Nguồn | Ý nghĩa |
 | --- | --- | --- |
-| `{Handler}` | Wiki Method + Path, đặt tên theo `1.5.4` | Tên hành động, ví dụ `Create` |
+| `{Handler}` | Wiki Method + Path và dự án | Tên hành động, ví dụ `Create` |
 | `{Entity}` | Wiki Path | Tên tài nguyên, ví dụ `Permission` |
-| `{DtoSuffix}` | `1.3.2` | Hậu tố class (`Dto` hoặc `DTO`) |
-| `{dtoFile}` | `1.2.5` | Tên file, ví dụ `create-permission.dto.ts` |
-| `{dtoDir}` | `3.1.4` | Thư mục chứa DTO |
+| `{DtoSuffix}` | Quy ước dự án | Hậu tố class (`Dto` hoặc `DTO`) |
+| `{dtoFile}` | Quy ước dự án | Tên file, ví dụ `create-permission.dto.ts` |
+| `{dtoDir}` | Cấu trúc dự án | Thư mục chứa DTO |
 | `{field}`, `{Type}` | Wiki `Body (Raw)` / `Query Params` / `Path Variables` | Tên và kiểu field |
 | `{validators}` | Cột Required, Constraints, Type | Decorator `class-validator` |
-| `{swagger}` | `5.1.5` | Decorator Swagger; `N/A` thì bỏ |
+| `{swagger}` | Cấu hình dự án và wiki | Decorator Swagger nếu phù hợp |
 
 ## Khung
 
@@ -33,16 +33,11 @@ export class {Handler}{Entity}{DtoSuffix} {
 }
 ```
 
-Quy tắc điền (riêng của skill):
+Điền field và decorator theo [`dto.conventions.md`](../references/dto.conventions.md); chỉ trim khi wiki hoặc dự án yêu cầu và không làm sai hợp đồng.
 
-- Mỗi dòng trong bảng wiki là một field; không thêm field ngoài wiki.
-- `Required = Y` thì `@IsNotEmpty()`, ngược lại `@IsOptional()`.
-- Cột Constraints ánh xạ sang decorator tương ứng (`max 255` thành `@MaxLength(255)`).
-- Chuỗi người dùng nhập thì thêm `@Transform` trim.
+## Ví dụ đã điền (chỉ minh họa)
 
-## Ví dụ đã điền (chỉ minh họa, theo profile `umee-api`)
-
-Wiki: `POST /permission`, `Body (Raw)` có `name | string | Y | max 255`.
+Wiki: `POST /permission`, `Body (Raw)` có `name | string | Y | max 255, trim`.
 
 ```ts
 import { Transform } from 'class-transformer';

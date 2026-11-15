@@ -1,8 +1,8 @@
 # Template Step 3: Service
 
-Quy tắc chuẩn: [`references/service.conventions.md`](../references/service.conventions.md). Chỉ dùng cú pháp MySQL/TypeORM trong [`references/orm-typeorm.conventions.md`](../references/orm-typeorm.conventions.md) và [`orm-typeorm.templates.md`](./orm-typeorm.templates.md); Service không gọi TypeORM trực tiếp.
+Quy tắc chuẩn: [`references/service.conventions.md`](../references/service.conventions.md). Chỉ dùng ví dụ TypeORM khi ORM/driver tương ứng được xác nhận; theo tầng dữ liệu của dự án.
 
-Các ví dụ dưới đây là mẫu theo từng phần/action của conventions, không phải một API mẫu cần chép nguyên. Những đoạn được ghi là lời gọi/handler body cần đặt trong method; các chữ trong `{...}` là placeholder. Thay tên lớp, kiểu, Repository, field, exception và member lỗi theo wiki, profile và source thực tế. Không thêm bước, điều kiện, transaction hay field mà wiki không yêu cầu.
+Các ví dụ dưới đây là mẫu theo từng phần/action của conventions, không phải một API mẫu cần chép nguyên. Những đoạn được ghi là lời gọi/handler body cần đặt trong method; các chữ trong `{...}` là placeholder. Thay tên lớp, kiểu, Repository, field và exception theo wiki và source thực tế. Không thêm bước, điều kiện, transaction hay field mà wiki không yêu cầu.
 
 ## Bản đồ bao phủ conventions
 
@@ -18,16 +18,16 @@ Các ví dụ dưới đây là mẫu theo từng phần/action của convention
 | Xử lý lỗi, `Response > Error` | Lỗi theo `On failure` |
 | Dịch vụ và thư viện bên ngoài | Compute và Call |
 | Giá trị trả về, RO | Return |
-| Kiểm tra trước khi hoàn tất, báo cáo, ngoài phạm vi | Checklist và báo cáo |
+| Kiểm tra trước khi hoàn tất, báo cáo, ngoài phạm vi | Xem trực tiếp trong conventions |
 
 ## Chuẩn bị trước khi code
 
-1. Đọc profile và xác nhận các khóa liên quan theo [`profile-contract.md`](../../docs-to-code/rules/profile-contract.md). Profile ưu tiên hơn các ví dụ trong file này.
-2. Xác nhận TypeORM và đọc các Entity từ `Processing Flow > Entity/Schema`. Nếu thiếu Entity, dừng và báo; không tự tạo.
+1. Khảo sát dự án theo [`workflow.md`](../../docs-to-code/rules/workflow.md); quy ước dự án hợp lệ ưu tiên ví dụ.
+2. Xác nhận ORM và đọc model/schema từ `Processing Flow > Entity/Schema`. Nếu thiếu, dừng và báo; không tự tạo.
 3. Đọc DTO và Controller hiện có để chữ ký Service khớp tên, thứ tự tham số và kiểu mà Controller truyền.
 4. Đọc đúng các trường trong `Request`, `Detail`, `Response > Error` và `Response > Success`.
 5. Tìm Repository, helper, service phụ thuộc, enum lỗi và module hiện có trước khi thêm code. Tái sử dụng thành phần sẵn có.
-6. Nếu wiki yêu cầu transaction mà cơ chế profile chưa xác nhận, dừng và hỏi; không tự chọn cơ chế.
+6. Nếu wiki yêu cầu transaction mà cơ chế hoặc ranh giới chưa rõ, dừng và hỏi.
 
 ## Đọc và ánh xạ Step
 
@@ -45,7 +45,7 @@ Không phân loại được `Action`, thiếu kiểu/field/điều kiện, ho�
 
 ## Khung Service
 
-Chữ ký dưới đây minh họa kiểu có tham số body. Chỉ đưa vào tham số mà Controller thực sự truyền; giữ nguyên thứ tự của Controller. Mọi method đều `async`, kiểu tham số/return rõ ràng. Mỗi hàm tối đa khoảng 30 dòng.
+Chữ ký dưới đây minh họa kiểu có tham số body. Chỉ đưa vào tham số mà Controller thực sự truyền; giữ nguyên thứ tự của Controller, khai báo kiểu rõ ràng và theo cấu trúc dự án.
 
 ```ts
 import { Injectable } from '@nestjs/common';
@@ -84,7 +84,7 @@ export class {Service} {
 
 ### Tham số người dùng hiện tại
 
-Chỉ thêm tham số nếu `Details` cần danh tính người dùng nhưng Controller chưa truyền. Giữ thứ tự tham số khớp với Controller và báo rằng Controller cần truyền user id qua cơ chế profile `4.1.5`:
+Chỉ thêm tham số nếu `Details` cần danh tính người dùng; giữ chữ ký khớp Controller và dùng cơ chế lấy người dùng hiện tại đã xác minh:
 
 ```ts
 public async update(
@@ -208,7 +208,7 @@ Gọi Check helper trong method điều phối:
 await this.assertAllRolesExist(roles, requestedRoleIds);
 ```
 
-`ErrorMessages.PERMISSION_NOT_FOUND` và `ErrorMessages.ROLE_NOT_FOUND` chỉ là tên minh họa. Dùng enum/constant và hình dạng lỗi thực tế của dự án; chỉ thêm member theo [`profile-contract.md`](../../docs-to-code/rules/profile-contract.md), không tự tạo enum trùng.
+`ErrorMessages.PERMISSION_NOT_FOUND` và `ErrorMessages.ROLE_NOT_FOUND` chỉ là tên minh họa. Dùng enum/constant và hình dạng lỗi thực tế của dự án; chỉ thêm member theo [`workflow.md`](../../docs-to-code/rules/workflow.md), không tự tạo enum trùng.
 
 ### Create: tạo bản ghi
 
@@ -350,7 +350,7 @@ Sau đó Step runtime sử dụng helper mới ở đúng vị trí trong flow:
 const documentPath = createDocumentPath(document.id, documentHistory.id);
 ```
 
-Đặt helper tại đúng file/phạm vi dùng chung theo profile. Không biến `Create helper` thành lỗi HTTP hoặc thêm comment `// Step N` runtime cho thao tác khai báo helper.
+Đặt helper tại file/phạm vi dùng chung theo dự án. Không biến `Create helper` thành lỗi HTTP hoặc thêm comment `// Step N` runtime cho thao tác khai báo helper.
 
 ### Call: gọi service/dependency hiện có
 
@@ -421,7 +421,7 @@ public async update(permissionId: number): Promise<void> {
 }
 ```
 
-Nếu khóa profile `3.3.4` quy định Service trả RO, dựng đúng data rồi chuyển trong hàm con:
+Nếu dự án dùng class-transformer và Service trả RO, dựng đúng data rồi chuyển trong hàm con:
 
 ```ts
 private async toPermissionRO(
@@ -460,7 +460,7 @@ Trong method thực tế, khai báo biến bằng kiểu trả về của cả h
 
 ## Lỗi theo `On failure`
 
-Trước `throw` đầu tiên, xác định nơi lưu lỗi, enum/constant và exception theo [`profile-contract.md`](../../docs-to-code/rules/profile-contract.md) mục 4. Ví dụ dưới đây minh họa việc nối lỗi từ wiki với status; tên member phải có trong dự án:
+Trước `throw` đầu tiên, xác định nơi lưu lỗi, enum/constant và exception theo [`workflow.md`](../../docs-to-code/rules/workflow.md) mục 4. Ví dụ dưới đây minh họa việc nối lỗi từ wiki với status; tên member phải có trong dự án:
 
 ```ts
 import { NotFoundException } from '@nestjs/common';
@@ -477,18 +477,9 @@ private async ensurePermissionExists(
 }
 ```
 
-| Wiki status | Exception mặc định của NestJS |
-| --- | --- |
-| 400 | `BadRequestException` |
-| 401 | `UnauthorizedException` |
-| 403 | `ForbiddenException` |
-| 404 | `NotFoundException` |
-| 409 | `ConflictException` |
-| 422 | `UnprocessableEntityException` |
-| 500 | `InternalServerErrorException` |
-| Mã khác | `new HttpException(response, status)` theo định dạng lỗi của dự án |
+Bảng ánh xạ status sang exception nằm trong [`service.conventions.md`](../references/service.conventions.md#xử-lý-lỗi).
 
-Ví dụ mã status khác chỉ dùng khi wiki yêu cầu mã đó và profile quy định định dạng tương thích:
+Ví dụ mã status khác chỉ dùng khi wiki yêu cầu mã đó và định dạng tương thích với dự án:
 
 ```ts
 import { HttpException } from '@nestjs/common';
@@ -507,15 +498,15 @@ private async throwCustomFailure(status: number): Promise<never> {
 }
 ```
 
-Status trong `Response > Error` là kết quả cuối. Giữ nguyên message wiki từng ký tự; không viết message literal trực tiếp trong `throw`. Nếu `On failure` khác `Response > Error`, dừng và hỏi.
+Status trong `Response > Error` là kết quả cuối. Giữ nguyên message wiki từng ký tự và dùng constant sẵn có khi phù hợp. Nếu `On failure` khác `Response > Error`, dừng và hỏi.
 
 Ví dụ đối chiếu: nếu Error table ghi `404 | ERR_PERMISSION_NOT_FOUND | 2`, chỉ Step 2 được ánh xạ sang `NotFoundException(ErrorMessages.ERR_PERMISSION_NOT_FOUND)`; không đưa lỗi này vào Step 1 hoặc Step 3.
 
-Nếu nhiều thao tác nằm trong cùng transaction và wiki gán cùng một lỗi cho nhóm đó, dùng mẫu transaction trong [`orm-typeorm.templates.md`](./orm-typeorm.templates.md): rollback, ghi log theo chuẩn dự án khi cần, rồi ném lỗi đã ánh xạ bằng enum/constant và giữ nguyên cause. Không nuốt lỗi hoặc trả thành công giả.
+Nếu nhiều thao tác nằm trong cùng transaction và wiki gán cùng một lỗi cho nhóm đó, rollback, ghi log theo chuẩn dự án khi cần, rồi ném lỗi đã ánh xạ theo workflow và giữ nguyên cause. Ví dụ TypeORM ở [`orm-typeorm.templates.md`](./orm-typeorm.templates.md). Không nuốt lỗi hoặc trả thành công giả.
 
 ## Transaction
 
-Chỉ dùng transaction khi wiki/người dùng yêu cầu rõ. Đọc cơ chế theo profile `3.3.5`; quy tắc phân định bước và xử lý lỗi nằm trong [`service.conventions.md`](../references/service.conventions.md#transaction-chỉ-khi-được-yêu-cầu). Cú pháp hoàn chỉnh `QueryRunner` nằm trong [`orm-typeorm.templates.md`](./orm-typeorm.templates.md#ví-dụ-có-transaction-queryrunner).
+Chỉ dùng transaction khi wiki/người dùng yêu cầu rõ. Chọn cơ chế của dự án; quy tắc ranh giới và xử lý lỗi nằm trong [`service.conventions.md`](../references/service.conventions.md#transaction-chỉ-khi-được-yêu-cầu). Ví dụ `QueryRunner` nằm trong [`orm-typeorm.templates.md`](./orm-typeorm.templates.md#transaction-với-queryrunner).
 
 Hình dạng điều phối Service:
 
@@ -523,15 +514,9 @@ Hình dạng điều phối Service:
 public async create(
   body: CreatePermissionDTO,
 ): Promise<PermissionEntity> {
-  // Step 1: Find the related record (outside the transaction)
-  const relatedRecord = await this.findRelatedRecord(body.relatedId);
-
-  // Step 2: Check the related record (outside the transaction)
-  await this.assertRelatedRecordExists(relatedRecord);
-
-  // Steps 3-4: Perform wiki-required writes in one transaction
+  // Steps requiring a consistent read and write share one transaction.
   const permission = await this.runInTransaction((queryRunner) =>
-    this.createPermissionWrites(queryRunner, body, relatedRecord),
+    this.createPermissionWithChecks(queryRunner, body),
   );
 
   // Step 5: Return after commit
@@ -539,39 +524,6 @@ public async create(
 }
 ```
 
-Mọi thao tác ghi bên trong `createPermissionWrites` phải dùng cùng transaction context qua Repository; không gọi Repository thường. `runInTransaction` phải connect/start, commit khi thành công, rollback khi lỗi, rethrow lỗi, và release trong `finally`. Nếu có nhiều bước ghi nhưng wiki không nói transaction, không tự thêm; ghi rõ trong báo cáo để người dùng quyết định.
+Các bước cần tính nhất quán bên trong `createPermissionWithChecks` phải dùng cùng transaction context theo cấu trúc dữ liệu dự án. `runInTransaction` phải connect/start, commit khi thành công, rollback khi lỗi, rethrow lỗi, và release trong `finally`. Nếu có nhiều bước ghi mà yêu cầu tính nhất quán chưa rõ, hỏi người dùng.
 
-## Checklist trước khi hoàn tất
-
-- [ ] ORM đã được xác nhận; Entity cho các bảng cần dùng tồn tại.
-- [ ] Đã kiểm tra DTO, Controller, Service, Repository, helper và lỗi hiện có trước khi thêm.
-- [ ] Mỗi Step runtime có `// Step N` khớp wiki, đúng thứ tự và nhánh `Next`.
-- [ ] Các Action đã được chuyển thành đúng mẫu Find, Check, Create, Update, Delete, Compute, Call hoặc Return; `Create helper` chỉ tạo mã nguồn.
-- [ ] Tên biến khớp `Output`; field chỉ lấy từ wiki và Entity.
-- [ ] Mã/trạng thái nghiệp vụ đã xác nhận dùng member enum/constant dùng chung; không có magic number/string trong điều kiện Service.
-- [ ] Mỗi `On failure` được ánh xạ đúng status/message; không có message literal trong `throw`.
-- [ ] Mỗi hàm khoảng 30 dòng tối đa, kiểu tham số/return tường minh.
-- [ ] Transaction chỉ có khi được yêu cầu; mọi ghi dùng cùng transaction context.
-- [ ] Return chỉ chứa property được tài liệu hóa và RO được tạo ở tầng theo profile `3.3.4`.
-- [ ] Chữ ký khớp Controller; Module đăng ký Service, Repository và Entity cần thiết.
-- [ ] Chạy kiểm tra biên dịch khi phù hợp; làm theo yêu cầu xác nhận của workflow trước khi thêm/chạy test.
-
-## Mẫu báo cáo cuối
-
-```text
-- ORM và Entity đã xác nhận:
-- File/method Service đã tạo hoặc cập nhật:
-- Repository/helper/module đã cập nhật:
-- Enum/constant lỗi đã dùng hoặc bổ sung:
-- Giả định hoặc điểm cần xác nhận:
-- Thiếu Entity/dependency hoặc Controller cần cập nhật:
-- Transaction: có/không; nếu wiki không yêu cầu thì ghi chú:
-- Kiểm tra đã chạy/chưa chạy:
-```
-
-## Ngoài phạm vi
-
-- Không tạo Entity, DTO hay Controller.
-- Không thêm bước, điều kiện, field hay transaction ngoài wiki/yêu cầu đã xác nhận.
-- Không trả Entity đầy đủ nếu wiki chỉ yêu cầu một phần response.
-- Không sửa file wiki.
+Checklist, báo cáo và phạm vi nằm trong [`service.conventions.md`](../references/service.conventions.md).

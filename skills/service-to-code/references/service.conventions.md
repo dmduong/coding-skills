@@ -1,16 +1,16 @@
 # Step 3: Tạo Service
 
-Đọc trước [`profile-contract.md`](../../docs-to-code/rules/profile-contract.md). Khóa profile của bước này: `1.2.3`, `1.2.4`, `2.1.4`, `2.2.4`, `2.2.5`, `3.3.1`, `3.3.5`, `3.3.6`, `4.1.5`, `4.4.1`, `4.4.2`, `4.4.5`.
+Đọc trước [`workflow.md`](../../docs-to-code/rules/workflow.md) và khảo sát cơ chế dữ liệu, lỗi và transaction của dự án.
 
 Ví dụ: [`assets/service.templates.md`](../assets/service.templates.md). Cú pháp ORM (TypeORM): [`orm-typeorm.conventions.md`](./orm-typeorm.conventions.md) và [`assets/orm-typeorm.templates.md`](../assets/orm-typeorm.templates.md).
 
-Service hiện thực logic xử lý của một API: mỗi dòng trong bảng `Processing Flow > Detail` của wiki trở thành một khối code có comment `// Step N`. Service truy cập MySQL thông qua Repository; cú pháp TypeORM nằm ở file ORM riêng.
+Service hiện thực từng bước runtime trong `Processing Flow > Detail`. Mặc định đánh dấu `// Step N`; nếu dự án có quy ước khác thì theo dự án.
 
 ## Đầu vào
 
 - Một file wiki theo template chuẩn.
 - DTO (step 1) và Controller (step 2) của API. Service phải khớp với cách Controller gọi nó.
-- TypeORM entity cho các bảng trong `Entity/Schema`. Skill này **không** tạo entity. Nếu thiếu entity nào, hãy dừng lại, liệt kê các bảng còn thiếu và yêu cầu người dùng tạo entity trước (dùng skill tạo entity nếu có).
+- Model/schema phù hợp với cơ chế dữ liệu dự án cho các bảng trong `Entity/Schema`. Skill này **không** tạo entity hay migration. Nếu thiếu, dừng và hỏi người dùng.
 
 ## Các section của wiki được sử dụng
 
@@ -25,11 +25,11 @@ Service hiện thực logic xử lý của một API: mỗi dòng trong bảng `
 
 ## Step 3.1: Xác nhận ORM và tìm Entity
 
-Đối chiếu khóa `2.1.4` với source rồi đọc file ORM tương ứng. Với MySQL/TypeORM: [`orm-typeorm.conventions.md`](./orm-typeorm.conventions.md) (xác nhận ORM, tìm Entity và tên property, ánh xạ thao tác dữ liệu, `save`/`insert`, cú pháp `QueryRunner`). Nếu ORM khác hoặc không khớp source, dừng lại và hỏi người dùng. Service không chứa cú pháp ORM trực tiếp: gọi method Repository (khóa `1.2.4`/`3.3.1`), thao tác mới thì thêm vào Repository theo `2.2.5`.
+Xác nhận ORM/driver từ dependency và source. Với TypeORM đọc [`orm-typeorm.conventions.md`](./orm-typeorm.conventions.md); ORM khác thì dùng model, API và mẫu đã có trong dự án, không áp dụng cú pháp TypeORM. Nếu không xác minh được ORM hoặc thao tác cần thiết, dừng và hỏi. Tái sử dụng tầng Repository nếu dự án có; nếu không, theo cấu trúc hợp lệ của dự án.
 
 ## Step 3.2: Đọc các khối Detail
 
-Theo template hiện tại, mỗi bước là một khối HTML `<details>` trong `### Detail`. Đọc `step_no` và `action_step` từ `<summary>` theo mẫu `Step [step_no]: [action_step]`. Phần nội dung trong khối cung cấp `Target`, `Details` (có thể gồm nhiều gạch đầu dòng), `Output`, `Next` và `On failure`. Mỗi khối `<details>` tương ứng đúng một bước. Để tương thích với wiki cũ, cũng nhận diện mẫu `<summary>` `Step: [step_no] | Action: [action_step] | Next: [next_step]` hoặc tiêu đề `#### Step <N>: <Action>`; với mẫu cũ, `Next` có thể nằm trong `<summary>` hoặc trong nội dung khối.
+Nhận diện bước và các định dạng wiki cũ theo mục 3 của [`workflow.md`](../../docs-to-code/rules/workflow.md).
 
 - `Target`: bảng hoặc biến chịu tác động của bước.
 - `Details`: gộp tất cả gạch đầu dòng con để hiểu điều kiện, phép gán field và điều kiện lỗi.
@@ -42,7 +42,7 @@ Theo template hiện tại, mỗi bước là một khối HTML `<details>` tron
 - Trước khi đưa giá trị nghiệp vụ đã xác nhận vào điều kiện Service (ví dụ `document.type` bằng `PDF` được xác nhận là `1`), tìm enum hoặc constant dùng chung hiện có trong source.
 - Nếu đã có member tương ứng, dùng member đó; không so sánh trực tiếp bằng magic number/string và không tạo bản sao.
 - Nếu chưa có member, thêm giá trị vào enum/constant dùng chung phù hợp theo cấu trúc dự án, rồi import và dùng member trong Service. Không tự tạo enum/constant riêng trong Service.
-- Chỉ thêm mapping mà wiki hoặc người dùng đã xác nhận. Nếu chưa rõ giá trị, nơi dùng chung phù hợp, hoặc mapping mâu thuẫn với source/profile, dừng và hỏi; không đoán hay mở rộng enum từ các giá trị chưa được giải nghĩa.
+- Chỉ thêm mapping mà wiki hoặc người dùng đã xác nhận. Nếu chưa rõ giá trị, nơi dùng chung phù hợp, hoặc mapping mâu thuẫn với source, dừng và hỏi; không đoán hay mở rộng enum từ các giá trị chưa được giải nghĩa.
 - Không áp dụng máy móc cho giá trị vốn là dữ liệu động từ request/database hoặc literal vốn có ý nghĩa riêng như `null`; mục tiêu là các mã/trạng thái nghiệp vụ có tên.
 
 Phân loại `Action` bằng các từ khóa bên dưới (không phân biệt hoa thường, tiếng Việt hoặc tiếng Anh). Nếu không thể phân loại action, hãy hỏi người dùng; không đoán.
@@ -69,38 +69,37 @@ Phân loại `Action` bằng các từ khóa bên dưới (không phân biệt h
 
 ## Step 3.3: Ánh xạ thao tác dữ liệu
 
-Cú pháp và API cho từng loại `Action` (Find, Check tồn tại, Create, Update, Delete, phân trang, relation) lấy từ file ORM ở Step 3.1, mục "Ánh xạ thao tác dữ liệu" và "Chọn `save` hay `insert`". Điều kiện và payload chỉ chứa các field có trong Entity đã đọc. Chỉ dùng transaction khi wiki hoặc người dùng yêu cầu rõ (ví dụ "run in a transaction"). Nếu có từ hai bước ghi trở lên mà không ai nhắc đến transaction, **không thêm**; ghi chú trong báo cáo cuối để người dùng quyết định.
+Cú pháp và API cho từng `Action` theo ORM đã xác nhận ở Step 3.1; chỉ áp dụng bảng TypeORM nếu dự án dùng TypeORM. Điều kiện và payload chỉ chứa field có trong model đã đọc. Chỉ dùng transaction khi wiki hoặc người dùng yêu cầu rõ. Nếu có từ hai bước ghi trở lên mà chưa rõ yêu cầu tính nhất quán, hỏi người dùng trước khi triển khai.
 
 ## Transaction (chỉ khi được yêu cầu)
 
-Cơ chế transaction theo khóa `3.3.5`. Cú pháp `QueryRunner` nằm ở [`orm-typeorm.conventions.md`](./orm-typeorm.conventions.md) (mục "Transaction bằng `QueryRunner`"); cơ chế khác thì giữ nguyên các nguyên tắc dưới đây.
+Cơ chế transaction theo dự án và ORM đã xác nhận. Cú pháp TypeORM `QueryRunner` nằm ở [`orm-typeorm.conventions.md`](./orm-typeorm.conventions.md).
 
 Quy tắc:
 
-- Các bước **đọc/kiểm tra** (Find, Check) thực hiện **trước** khi mở transaction, bằng repository thường. Transaction chỉ bao các bước **ghi** (Create, Update, Delete).
+- Các bước đọc/kiểm tra cần tính nhất quán với ghi phải nằm trong cùng transaction với isolation/locking phù hợp; nếu wiki không rõ ranh giới hoặc điều kiện cạnh tranh, hỏi người dùng. Không mặc định chuyển mọi bước đọc ra ngoài transaction.
 - Khi lỗi: rollback rồi **ném lại đúng lỗi gốc**; không nuốt lỗi, không trả về thành công giả. Luôn giải phóng tài nguyên trong `finally`.
 - Mọi thao tác ghi trong transaction phải đi qua cùng một ngữ cảnh transaction; không gọi repository thường bên trong khối transaction.
-- Tách hàm con: hàm điều phối (mở/commit/rollback/release) ngắn gọn, phần ghi dữ liệu nằm trong hàm con `private async` nhận ngữ cảnh transaction làm tham số, mỗi hàm tối đa khoảng 30 dòng.
+- Giữ hàm điều phối và thao tác trong transaction ngắn, rõ ràng; theo cấu trúc dự án.
 - Giá trị trả về dựng sau khi commit (hoặc trả trong `try` ngay sau commit), theo mục "Giá trị trả về".
 
 Ví dụ đầy đủ: [`assets/orm-typeorm.templates.md`](../assets/orm-typeorm.templates.md) (mục "Ví dụ có Transaction"); ví dụ khung Service, Create helper, Check và Return: [`assets/service.templates.md`](../assets/service.templates.md).
 
 ## Chữ ký method và cấu trúc Service
 
-- File và class: theo mẫu khóa `1.2.3` và `1.3.1`, đặt ở thư mục module (khớp với Service mà Controller inject ở step 2).
+- File và class: theo Service tương tự của dự án, mặc định `<resource>.service.ts` và `<Resource>Service`.
 - Nếu file đã tồn tại, đọc toàn bộ, thêm method mới vào cuối class và thêm dependency vào constructor hiện có. Không tạo constructor thứ hai hoặc xóa method hiện có. Nếu đã có method cùng tên, hãy dừng lại và hỏi.
 - Dùng đúng tên method là Handler đã suy ra (theo `SKILL.md`). Tham số phải có cùng tên và thứ tự với những gì Controller truyền vào (Param, Query, Body, Headers), với kiểu DTO từ step 1.
-- Mọi method phải là `async`. Mỗi Step phải là một khối code (hoặc một lời gọi hàm con) có comment `// Step N: <mô tả ngắn từ wiki>` để đối chiếu với wiki.
-- Giới hạn độ dài hàm: tuân theo `profile-contract.md` (tối đa khoảng 30 dòng/hàm, kể cả method chính và hàm con).
-- Mỗi bước nên được tách thành một hàm con `private async` riêng (ví dụ `findRoleOrFail`, `assertNameNotExists`, `createUser`). Method chính chỉ điều phối: gọi tuần tự các hàm con theo thứ tự các Step, mỗi lời gọi có comment `// Step N: ...`. Có thể gộp các bước rất nhỏ liên quan chặt chẽ vào một hàm con nếu vẫn dễ đối chiếu với wiki.
+- Chỉ dùng `async` khi cần; mặc định đánh dấu từng bước runtime bằng `// Step N`, trừ khi quy ước dự án khác.
+- Giữ hàm ngắn, rõ ràng; tách hàm con khi giúp dễ hiểu và theo cấu trúc dự án.
 - Tên hàm con mô tả đúng hành động của bước (động từ + đối tượng), đặt sau method chính trong class, có kiểu tham số và kiểu trả về tường minh. Lỗi `On failure` được ném bên trong hàm con của bước tương ứng.
-- Nếu Detail dùng thông tin về người dùng đang đăng nhập (ví dụ `userId` từ token) mà Controller không truyền, thêm một tham số cho Service và báo người dùng cập nhật Controller theo cơ chế lấy người dùng hiện tại của khóa `4.1.5`. Không tạo decorator mới.
+- Nếu Detail cần người dùng hiện tại, dùng cơ chế đã xác minh của dự án và giữ Controller/Service nhất quán; nếu chưa có hoặc không rõ, dừng và hỏi. Không tạo decorator mới.
 - Inject mọi bảng được liệt kê trong `Entity/Schema` mà có dùng, nhưng không inject các bảng không dùng.
-- Đăng ký Service và các `forFeature` của các bảng trong Module nếu chưa có.
+- Đăng ký Service và dependency dữ liệu trong Module theo cơ chế ORM và module đã khảo sát; chỉ dùng `forFeature` khi phù hợp với dự án.
 
 ## Xử lý lỗi
 
-- Chuyển mỗi `On failure` thành một `throw` ở bước tương ứng, dùng lớp lỗi theo khóa `4.4.1` và ánh xạ tình huống → lỗi của khóa `4.4.5`. Status trong `Response > Error` là giá trị cuối cùng; nếu `4.4.5` cho lớp khác với status wiki thì theo status wiki. Bảng dưới là mặc định khi profile dùng exception dựng sẵn của NestJS:
+- Ánh xạ `On failure` sang exception theo wiki và cơ chế dự án; nếu mâu thuẫn về hợp đồng, hỏi. Bảng dưới là mặc định khi dùng exception NestJS:
 
 | Status | Exception                                                   |
 | ------ | ----------------------------------------------------------- |
@@ -111,41 +110,40 @@ Ví dụ đầy đủ: [`assets/orm-typeorm.templates.md`](../assets/orm-typeorm
 | 409    | `ConflictException`                                         |
 | 422    | `UnprocessableEntityException`                              |
 | 500    | `InternalServerErrorException`                              |
-| Khác   | `new HttpException({ message, error, statusCode }, status)` |
+| Khác   | `new HttpException(message, status)` nếu body mặc định khớp wiki và filter dự án; nếu không, xác minh hợp đồng trước |
 
 - Dùng đúng thông báo trong wiki. Không diễn đạt lại.
-- **Thông báo lỗi lấy từ enum, không viết literal trong `throw`.** Trước khi viết `throw` đầu tiên, thực hiện mục 4 của [`profile-contract.md`](../../docs-to-code/rules/profile-contract.md) (nơi lưu theo khóa `4.4.7`; chưa có thì hỏi người dùng). Các `throw` trong ví dụ chỉ minh họa; dùng enum và hình dạng exception thực tế của dự án.
-- Khi một `try/catch` bao nhiều bước và wiki gán cùng một lỗi cho tất cả (ví dụ `ERR_CREATE_DOCUMENT_FAILED` ở nhiều bước), ném lỗi đó một lần từ `catch` bằng member enum, giữ nguyên lỗi gốc qua `{ cause: error }` hoặc theo cách dự án ghi log lỗi; không nuốt lỗi.
-- Không dùng `try/catch` để nuốt lỗi. Không log trừ khi wiki yêu cầu.
+- Trước `throw` đầu tiên, thực hiện mục 4 của [`workflow.md`](../../docs-to-code/rules/workflow.md): tái sử dụng constant nếu dự án có; nếu không, dùng thông báo wiki trực tiếp.
+- Khi một `try/catch` bao nhiều bước và wiki gán cùng một lỗi cho tất cả, ném lỗi theo mục 4 của workflow và giữ nguyên cause hoặc log theo cơ chế dự án; không nuốt lỗi.
+- Không dùng `try/catch` để nuốt lỗi. Log theo yêu cầu wiki và quy ước dự án, không log dữ liệu nhạy cảm.
 - Nếu `On failure` mâu thuẫn với `Response > Error` (khác status hoặc thông báo), hãy dừng lại và hỏi.
-- Xem [`ro-exception.conventions.md`](./ro-exception.conventions.md) để biết chi tiết về chuẩn hóa exception.
+- Xem [`ro-exception.conventions.md`](../../ro-to-code/references/ro-exception.conventions.md) để biết chi tiết về chuẩn hóa exception.
 
 ## Dịch vụ và thư viện bên ngoài
 
 - Với các bước `Compute` hoặc `Call` (băm mật khẩu, JWT, gọi service khác, v.v.), dùng các thư viện đã có trong `package.json` hoặc các service đã có trong dự án. Nếu chưa có, ghi chú trong báo cáo; không cài dependency hoặc tạo service mới.
-- Không hard-code secret, thời hạn token hay URL (xem `profile-contract.md`, mục 3).
+- Không hard-code secret, thời hạn token hay URL (xem `workflow.md`, mục 3).
 
 ## Giá trị trả về
 
-Bước `Return` phải dựng một giá trị có đúng các property trong bảng `Property` của `Response > Success`, không thừa không thiếu, và có giá trị theo quy định của wiki. Không trả về toàn bộ Entity vì có thể làm lộ các field nhạy cảm (khóa `4.3.2`).
+Bước `Return` phải dựng một giá trị có đúng các property trong bảng `Property` của `Response > Success`, không thừa không thiếu, và có giá trị theo quy định của wiki. Không trả về toàn bộ Entity nếu có thể làm lộ field nhạy cảm.
 
-Nơi chuyển sang RO theo khóa `3.3.4` (profile ưu tiên). Nếu khóa quy định Service trả Entity hoặc kiểu nội bộ và Controller chuyển sang RO, Service chỉ dựng giá trị đúng các property của bảng `Property` và **không** gọi `plainToInstance`; việc chuyển nằm ở Controller (step 2/4). Nếu khóa quy định Service trả RO, đặt việc dựng object và gọi `plainToInstance(<RO>, <data>, { excludeExtraneousValues: true })` trong một hàm con (ví dụ `toCreatePermissionRO`). Nếu RO chưa tồn tại, trước tiên trả về object literal; step 4 tạo RO và nối việc chuyển ở nơi khóa `3.3.4` quy định.
+Chọn nơi chuyển response theo dự án; mặc định dựng object tường minh đúng wiki. Chỉ dùng `plainToInstance` nếu dự án dùng cơ chế đó. Nếu response class chưa tồn tại, step 4 hoàn thiện và nối chuyển đổi nếu cần.
 
 ## Kiểm tra trước khi hoàn tất
 
-- [ ] Không hàm nào dài quá khoảng 30 dòng; mỗi bước đã được tách thành hàm con.
-- [ ] Số khối `// Step N` khớp với số dòng trong Detail, đúng thứ tự và theo các nhánh `Next`.
+- [ ] Flow khớp các bước runtime và nhánh `Next`; hàm rõ ràng và theo quy ước dự án.
 - [ ] Tên biến khớp với cột `Output`; tên property khớp với Entity.
-- [ ] Mỗi `On failure` đều có một `throw` với đúng status và thông báo.
-- [ ] Không có `throw` nào dùng chuỗi literal; mọi thông báo/mã lỗi tham chiếu member enum (`profile-contract.md` mục 4), và các member mới đã được thêm vào enum.
-- [ ] Giá trị trả về có đúng các property trong bảng `Property` của `Response > Success` và sẽ được chuyển sang RO ở nơi khóa `3.3.4` quy định (step 4).
+- [ ] Mỗi `On failure` của bước runtime đều được ánh xạ sang lỗi với đúng status và thông báo.
+- [ ] Lỗi dùng constant hiện có khi phù hợp và giữ đúng thông báo wiki.
+- [ ] Giá trị trả về có đúng các property trong `Response > Success` và theo cơ chế response dự án.
 - [ ] Chữ ký method khớp với cách Controller gọi.
-- [ ] Service và các `forFeature` đã được đăng ký trong Module.
-- [ ] Nếu có thể, chạy lệnh kiểm tra biên dịch (xem `profile-contract.md`) và xác nhận không có lỗi mới từ file đã tạo.
+- [ ] Service và dependency dữ liệu đã được đăng ký đúng trong Module.
+- [ ] Nếu có thể, chạy lệnh kiểm tra biên dịch (xem `workflow.md`) và xác nhận không có lỗi mới từ file đã tạo.
 
 ## Báo cáo cuối
 
-Nêu ngắn gọn bằng chứng dự án dùng TypeORM, các file đã tạo hoặc sửa, enum lỗi đã dùng hoặc tạo cùng các member đã thêm, các giả định và công việc còn lại (thiếu Entity, thiếu thư viện, tham số bổ sung mà Controller phải truyền, hoặc các bước ghi không có transaction).
+Nêu ngắn gọn bằng chứng về ORM và cấu trúc dữ liệu, các file đã tạo hoặc sửa, lỗi đã dùng, các giả định và công việc còn lại.
 
 ## Ngoài phạm vi của Step 3
 

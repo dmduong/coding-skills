@@ -2,7 +2,7 @@
 
 Quy tắc chọn API: [`references/orm-typeorm.conventions.md`](../references/orm-typeorm.conventions.md). Quy tắc Service, phân tích wiki và ánh xạ Step: [`references/service.conventions.md`](../references/service.conventions.md).
 
-Các ví dụ được chia theo từng trường hợp trong conventions. Tên entity/property bên dưới chỉ để minh họa; phải thay bằng tên đã đọc từ Entity thực tế. Những method Repository được ghi rõ là code bên trong custom repository hiện có (hoặc lớp Repository dự án); Service chỉ gọi các method đó, không gọi TypeORM trực tiếp.
+Các ví dụ được chia theo từng trường hợp trong conventions. Tên entity/property bên dưới chỉ để minh họa; phải thay bằng tên đã đọc từ Entity thực tế. Nếu dự án có tầng Repository, đặt method dữ liệu trong Repository; nếu không, theo cấu trúc dữ liệu hợp lệ của dự án.
 
 ## Bản đồ bao phủ conventions
 
@@ -23,9 +23,9 @@ Các ví dụ được chia theo từng trường hợp trong conventions. Tên 
 
 Trước khi dùng mẫu:
 
-1. Đối chiếu profile `2.1.4`, `1.2.4`, `3.3.1`, `2.2.5`, `3.3.5`, `4.4.8` với `package.json` và source.
-2. Xác nhận dự án thực sự dùng MySQL/TypeORM. Nếu profile hoặc source cho thấy ORM khác, `N/A`, hoặc không thống nhất, dừng và dùng convention tương ứng; không chuyển đổi theo suy đoán.
-3. Nếu có tầng Repository, đặt các truy vấn trong Repository; không inject `Repository<Entity>` trực tiếp vào Service nếu profile yêu cầu custom Repository.
+1. Đối chiếu ORM/driver, repository, transaction và xử lý lỗi với `package.json` và source.
+2. Chỉ dùng ví dụ MySQL/TypeORM khi dự án thực sự dùng chúng. ORM khác thì theo API và ví dụ dự án, không chuyển đổi theo suy đoán.
+3. Nếu có tầng Repository, đặt các truy vấn trong Repository; không inject `Repository<Entity>` trực tiếp vào Service khi dự án dùng custom Repository.
 4. Trước khi thêm method, tìm method tương đương và làm theo cách đặt tên, kế thừa base repository, đăng ký module và xử lý lỗi đang có.
 
 Các API dưới đây thuộc TypeORM 0.3.x. Kiểm tra phiên bản và kiểu thực tế trong dự án trước khi áp dụng.
@@ -87,7 +87,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 export class PermissionModule {}
 ```
 
-Nếu profile quy định custom Repository, Service inject custom class đó thay vì `Repository<Entity>`. Trong dự án `umee-api`, custom Repository kế thừa `BaseRepository` và module đăng ký class Repository qua `providers`; giữ nguyên cơ chế này, không chuyển sang `@InjectRepository`:
+Nếu dự án dùng custom Repository, Service inject custom class đó thay vì `Repository<Entity>`. Ví dụ minh họa custom Repository kế thừa `BaseRepository`:
 
 ```ts
 import { Injectable } from '@nestjs/common';
@@ -238,20 +238,11 @@ public findPageWithRoles(
 }
 ```
 
-Nếu có filter từ wiki, thêm vào `where`; chỉ dùng `page >= 1` và giới hạn `limit` nếu DTO/profile đã quy định hoặc đã validate.
+Nếu có filter từ wiki, thêm vào `where`; chỉ dùng `page >= 1` và giới hạn `limit` nếu wiki hoặc DTO đã quy định và validate.
 
 ### Quy tắc chọn `find*` hay QueryBuilder
 
-| Trường hợp | Chọn |
-| --- | --- |
-| Điều kiện chỉ trên Entity chính | `findOne`, `findOneBy`, `findBy` |
-| Chỉ cần nạp relation, không lọc relation | `find*` với `relations` |
-| Predicate trên cột relation | QueryBuilder |
-| Cần `innerJoin` để loại bản ghi không khớp relation | QueryBuilder |
-| Cần giới hạn cột được lấy | QueryBuilder với `.select([...])` |
-| Pagination offset cùng tổng số dòng | `findAndCount` |
-
-QueryBuilder nằm trong Repository; Service chỉ gọi method Repository tương ứng.
+Xem quy tắc chọn API và vị trí QueryBuilder trong [`orm-typeorm.conventions.md`](../references/orm-typeorm.conventions.md#31-chọn-find-hay-querybuilder).
 
 ## Create: chọn `save` hoặc `insert`
 
@@ -310,17 +301,7 @@ Chỉ dùng mẫu này nếu DB/driver đã xác nhận generated identifier đ�
 
 ### Quyết định nhanh
 
-| Nhu cầu trong wiki | API |
-| --- | --- |
-| Một row, cần ID/default/generated fields ở Step sau | `save(create(...))` |
-| Cần `@BeforeInsert`, subscriber hoặc cascade | `save(create(...))` |
-| Nhiều row hoặc không cần kết quả của insert | `insert(...)` |
-| Wiki chỉ yêu cầu tạo mới, không cần Entity | Ưu tiên `insert(...)` |
-| Cần generated ID từ `insert` | `result.identifiers`; không coi là Entity |
-
-Chú ý: `save` trên object có primary key có thể thực hiện `UPDATE`; không dùng nó như lệnh insert-only nếu có khả năng object đã có ID.
-
-Khi trong transaction, cả `save` và `insert` phải thực hiện qua `queryRunner.manager`.
+Xem cách chọn `save` hay `insert` trong [`orm-typeorm.conventions.md`](../references/orm-typeorm.conventions.md#4-chọn-save-hay-insert).
 
 ## Update: cập nhật và phát hiện không có row
 
@@ -391,7 +372,7 @@ public async softDeleteById(id: number): Promise<boolean> {
 
 ## Transaction với `QueryRunner`
 
-Chỉ tạo transaction nếu wiki hoặc người dùng yêu cầu rõ. Quy tắc xác định bước nào nằm trong transaction và cách xử lý lỗi nằm trong [`service.conventions.md`](../references/service.conventions.md#transaction-chỉ-khi-được-yêu-cầu); cơ chế cụ thể phải khớp profile `3.3.5`.
+Chỉ tạo transaction nếu wiki hoặc người dùng yêu cầu rõ. Quy tắc xác định bước nào nằm trong transaction và cách xử lý lỗi nằm trong [`service.conventions.md`](../references/service.conventions.md#transaction-chỉ-khi-được-yêu-cầu); cơ chế cụ thể phải khớp dự án.
 
 ### Repository method nhận transaction context
 
@@ -450,7 +431,7 @@ export class DocumentService {
   ) {}
 
   public async create(body: CreateDocumentDTO): Promise<DocumentEntity> {
-    // Find/Check, when present in the wiki, runs before the transaction.
+    // Include consistency-sensitive reads and checks inside this transaction.
     return this.runInTransaction(async (queryRunner) => {
       // Step 1: Create the document
       const document = await this.documentRepository.createWithTransaction(
@@ -504,23 +485,20 @@ A database rollback cannot undo an S3 upload, email, or external API call. Do no
 
 ## Duplicate key (`ER_DUP_ENTRY`)
 
-TypeORM wraps MySQL failures in `QueryFailedError`. Detect the driver code through a type guard rather than assuming every thrown value has a `code` property:
+MySQL error codes may appear directly on the error or in TypeORM's `driverError`. Check both without assuming the shape of the thrown value:
 
 ```ts
-import { QueryFailedError } from 'typeorm';
-
 export function isDuplicateEntryError(error: unknown): boolean {
-  return (
-    error instanceof QueryFailedError &&
-    typeof error.driverError === 'object' &&
-    error.driverError !== null &&
-    'code' in error.driverError &&
-    error.driverError.code === 'ER_DUP_ENTRY'
-  );
+  if (typeof error !== 'object' || error === null) return false;
+  if ('code' in error && error.code === 'ER_DUP_ENTRY') return true;
+  if (!('driverError' in error)) return false;
+  const driverError = error.driverError;
+  return typeof driverError === 'object' && driverError !== null &&
+    'code' in driverError && driverError.code === 'ER_DUP_ENTRY';
 }
 ```
 
-Map the duplicate to the documented conflict exception/message in the Service, following profile `4.4.8` and the existing error enum/constant:
+Map the duplicate to the documented conflict exception/message in the Service, following the project's existing error mechanism:
 
 ```ts
 try {
@@ -534,18 +512,4 @@ try {
 }
 ```
 
-Only map this error when the wiki/profile requires that behavior. Preserve all unrelated database errors; do not convert every query failure into a conflict. For a database operation inside a transaction, apply the mapping at the agreed boundary while still rolling back and preserving the original cause according to the project's exception pattern.
-
-## Checklist trước khi hoàn tất
-
-- [ ] ORM/driver khớp profile và source; Entity đã được đọc.
-- [ ] Property, relation, soft-delete và kiểu ID lấy từ Entity, không suy đoán.
-- [ ] Mọi DB query nằm trong Repository; Service chỉ gọi method Repository.
-- [ ] Đã chọn `find*` hay QueryBuilder theo đúng nhu cầu; parameters không bị nối vào SQL.
-- [ ] Pagination/relations/cột select chỉ được thêm khi wiki yêu cầu.
-- [ ] Create dùng `save` hay `insert` theo nhu cầu Entity/result/hook/cascade; không coi `InsertResult` là Entity.
-- [ ] Update/Delete dùng `affected` an toàn và chỉ tạo lỗi khi wiki quy định.
-- [ ] Trong transaction, mọi write dùng cùng `queryRunner.manager`; ngoài transaction không bị lẫn repository thường.
-- [ ] Transaction chỉ được thêm khi wiki/người dùng yêu cầu; external side effects không bị mô tả sai là rollbackable.
-- [ ] Duplicate key chỉ được map theo profile/wiki; lỗi database khác được ném lại.
-- [ ] Repository/module method mới khớp conventions và wiring sẵn có.
+Apply only under the conditions in [`ro-exception.conventions.md`](../../ro-to-code/references/ro-exception.conventions.md#step-44-lỗi-trùng-khóa-trong-database-tùy-chọn-có-điều-kiện). Reuse an existing helper; if none exists, ask before creating one in the project's shared location. Preserve unrelated database errors and, inside a transaction, roll back and preserve the original cause according to the project's exception pattern.

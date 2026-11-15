@@ -3,14 +3,16 @@
 Skill này là **orchestrator** cho workflow docs-to-code.
 
 - Quy tắc điều phối: [SKILL.md](./SKILL.md)
-- Rule dùng chung: [rules/profile-contract.md](./rules/profile-contract.md)
+- Rule dùng chung: [rules/workflow.md](./rules/workflow.md)
 - Skill con:
   - [dto-to-code](../dto-to-code/SKILL.md)
   - [controller-to-code](../controller-to-code/SKILL.md)
   - [service-to-code](../service-to-code/SKILL.md)
   - [ro-to-code](../ro-to-code/SKILL.md)
 
-Skill tổng không chứa `references/`, `assets` riêng và không sinh code trực tiếp; mọi xử lý được giao cho skill con tương ứng.
+Skill tổng chứa mẫu wiki trong `assets/` và không sinh code trực tiếp; mọi xử lý được giao cho skill con tương ứng.
+
+Skill khảo sát source, cấu hình và hướng dẫn dự án theo nhu cầu API, không yêu cầu profile tự tạo. Quy ước dự án hợp lệ được ưu tiên; khi có lỗi khách quan, mâu thuẫn với wiki hoặc thay đổi ảnh hưởng client, xử lý theo [workflow](./rules/workflow.md).
 
 ## Hướng dẫn cách sử dụng
 
@@ -35,82 +37,7 @@ Lưu ý:
 
 ## Template wiki
 
-Mẫu dưới đây theo cấu trúc hiện tại của [`docs/wiki_new.md`](../../../docs/wiki_new.md). Trong `Processing Flow > Detail`, mỗi bước được thu gọn trong một khối `<details>`; số bước và hành động hiển thị trong `<summary>`, còn `Next` và các trường khác nằm trong nội dung có thể mở rộng.
-
-```markdown
-## Purpose
-
-<purpose_of_documentation>
-
-## Endpoint
-
-| Component | Value         |
-| --------- | ------------- |
-| Method    | <method_name> |
-| Path      | <path_name>   |
-| Roles     | <role_name>   |
-
-## Header
-
-| Header        | Required | Value          |
-| ------------- | -------- | -------------- |
-| <header_name> | Y or N   | <header_value> |
-
-## Request
-
-### Path Variables
-
-### Query Params
-
-### Body (Raw)
-
-### Body (Form data)
-
-| Field        | Type         | Required | Constraints        | Description         |
-| ------------ | ------------ | -------- | ------------------ | ------------------- |
-| <field_name> | <field_type> | Y or N   | <constraints_name> | <description_field> |
-
-## Processing Flow
-
-### Entity/Schema
-
-| Table        | Role in API | Documentation        |
-| ------------ | ----------- | -------------------- |
-| <table_name> | <role_name> | <link_documentation> |
-
-### Detail
-
-<details>
-  <summary>Step [step_no]: [action_step]</summary>
-
-- **Target:** <action_target>
-- **Details:**
-  - <action_detail_1>
-  - <action_detail_2>
-- **Output:** <variable_name>
-- **Next:** <next_step>
-- **On failure:** <error_message>
-
-</details>
-
-## Response
-
-### Success
-
-| Status        | Description          |
-| ------------- | -------------------- |
-| <http_status> | <description_status> |
-
-| Property        | Type            | Description            |
-| --------------- | --------------- | ---------------------- |
-| <property_name> | <property_type> | <property_description> |
-
-### Error
-
-| Status         | Message         | Raised at        |
-| -------------- | --------------- | ---------------- |
-| <error_status> | <error_message> | <raised_at_step> |
-```
+Sử dụng mẫu [`assets/docs-template.md`](./assets/docs-template.md) đi kèm skill. Trong `Processing Flow > Detail`, mỗi bước được thu gọn trong một khối `<details>`; số bước và hành động hiển thị trong `<summary>`, còn `Next` và các trường khác nằm trong nội dung có thể mở rộng.
 
 ## Cách hoàn thiện wiki
 
@@ -185,25 +112,11 @@ Trong ví dụ, Find chịu trách nhiệm truy vấn và đặt kết quả và
 
 ## Chạy lần đầu và chạy lại (đồng bộ)
 
-Không cần mô tả thêm kiểu "tài liệu này đã chạy trước đó". Skill tự xác định chế độ trước khi sinh code và nêu chế độ trong báo cáo đầu tiên (chi tiết ở mục 5 của [rules/profile-contract.md](./rules/profile-contract.md)).
-
-| Tình huống | Chế độ | Kết quả |
-| --- | --- | --- |
-| Wiki mới, chưa có code cho Method + Path đó | TẠO MỚI | Sinh toàn bộ code, rồi lưu snapshot và manifest |
-| Chạy lại, wiki không đổi so với snapshot | KHÔNG ĐỔI | Báo "không có thay đổi", không sửa gì |
-| Chạy lại, wiki đã đổi | ĐỒNG BỘ | Hiển thị bảng khác biệt (section, cũ → mới, file sẽ sửa), hỏi **Áp dụng** hoặc **Hủy** |
-| Chưa có snapshot nhưng code đã có | ĐỒNG BỘ KHÔNG BASELINE | So wiki trực tiếp với code, hỏi xác nhận, rồi tạo snapshot |
-| Yêu cầu "tạo lại", "ghi đè", "regenerate" | GHI ĐÈ | Hỏi xác nhận riêng trước khi ghi đè |
-
-Ở chế độ ĐỒNG BỘ:
-- **Áp dụng**: chỉ các skill con thuộc tầng có khác biệt chạy (`Request` → DTO; `Endpoint`/`Roles`/`Success` status → Controller; `Processing Flow`/`Error` → Service; `Success` property → RO) và chỉ sửa đúng các dòng liên quan.
-- **Hủy**: dừng ngay, không sửa file nào, không cập nhật snapshot.
-- Code lệch so với wiki ở phần wiki không đổi (ví dụ do sửa tay): skill báo riêng và hỏi, không tự ghi đè.
+Skill tự xác định và báo chế độ trước khi sinh code. Khi đồng bộ, skill hiển thị khác biệt và hỏi **Áp dụng** hoặc **Hủy**; các thay đổi thủ công không liên quan được giữ nguyên. Quy trình đầy đủ, bao gồm đồng bộ không baseline và xử lý code bị lệch, ở mục 5 của [rules/workflow.md](./rules/workflow.md).
 
 ### Snapshot và manifest
 
-- Lưu ở `.project-profile/generated/` (khóa profile `5.3.4`), **commit cùng repo**.
-- Mỗi wiki có hai file: `<tên-wiki>.snapshot.md` (bản sao wiki lúc sinh code xong) và `<tên-wiki>.manifest.json` (hash wiki, Method + Path, danh sách file đã sinh).
-- Chỉ được ghi sau khi chạy xong và người dùng không hủy. Không sửa tay hai file này.
-- Xóa snapshot sẽ đưa lần chạy sau về "đồng bộ không baseline"; xóa hoặc tạo lại `profile.md` thì không ảnh hưởng snapshot.
-- Profile cần có các khóa `5.3.3`–`5.3.5`; profile tạo bởi `project-profile` mới đã có sẵn (trạng thái `preset`).
+- Snapshot và manifest mới lưu tại `<gốc dự án>/.docs-to-code/generated/`; commit cùng repo. Không cần skill hoặc file profile.
+- Snapshot và manifest toàn API chỉ được ghi sau khi hoàn tất và đối chiếu mọi tầng liên quan, nếu người dùng không hủy. Chạy một phần không tạo hoặc cập nhật baseline toàn API; không sửa tay hai file này.
+- Baseline cũ tại `.project-profile/generated/` vẫn được đọc và cập nhật tại chỗ khi nhận diện duy nhất; không tự di chuyển hay xóa. Nếu trùng hoặc không rõ, hỏi người dùng.
+- Xóa snapshot sẽ đưa lần chạy sau về "đồng bộ không baseline".
