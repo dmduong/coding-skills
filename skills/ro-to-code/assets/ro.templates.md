@@ -29,25 +29,28 @@ export class {RoClass} {
 
 Áp dụng quy tắc và chọn nơi chuyển theo [`ro-exception.conventions.md`](../references/ro-exception.conventions.md#step-42-kết-nối-ro-với-service). Ví dụ theo tầng: [`controller.templates.md`](../../controller-to-code/assets/controller.templates.md) và [`service.templates.md`](../../service-to-code/assets/service.templates.md).
 
-## Ví dụ đã điền (chỉ minh họa)
+## Ví dụ đã điền (chỉ minh họa, terrarium hư cấu)
 
 ```ts
 import { Expose, Type } from 'class-transformer';
 
-export class PermissionItemRO {
+export class ClimateReadingItemRO {
   @Expose()
   id: number;
 
   @Expose()
-  name: string;
+  recordedAt: string;
+
+  @Expose()
+  temperatureC: number;
 }
 
-export class GetListPermissionRO {
+export class ListClimateReadingsRO {
   @Expose()
-  @Type(() => PermissionItemRO)
-  items: PermissionItemRO[];
+  @Type(() => ClimateReadingItemRO)
+  items: ClimateReadingItemRO[];
 
   @Expose()
-  totalItems: number;
+  totalReadings: number;
 }
 ```

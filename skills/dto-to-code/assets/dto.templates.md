@@ -9,9 +9,9 @@ Template này là **khung** cho dự án dùng class-validator/class-transformer
 | Placeholder | Nguồn | Ý nghĩa |
 | --- | --- | --- |
 | `{Handler}` | Wiki Method + Path và dự án | Tên hành động, ví dụ `Create` |
-| `{Entity}` | Wiki Path | Tên tài nguyên, ví dụ `Permission` |
+| `{Entity}` | Wiki Path | Tên tài nguyên, ví dụ `ClimateReading` |
 | `{DtoSuffix}` | Quy ước dự án | Hậu tố class (`Dto` hoặc `DTO`) |
-| `{dtoFile}` | Quy ước dự án | Tên file, ví dụ `create-permission.dto.ts` |
+| `{dtoFile}` | Quy ước dự án | Tên file, ví dụ `create-climate-reading.dto.ts` |
 | `{dtoDir}` | Cấu trúc dự án | Thư mục chứa DTO |
 | `{field}`, `{Type}` | Wiki `Body (Raw)` / `Query Params` / `Path Variables` | Tên và kiểu field |
 | `{validators}` | Cột Required, Constraints, Type | Decorator `class-validator` |
@@ -35,20 +35,34 @@ export class {Handler}{Entity}{DtoSuffix} {
 
 Điền field và decorator theo [`dto.conventions.md`](../references/dto.conventions.md); chỉ trim khi wiki hoặc dự án yêu cầu và không làm sai hợp đồng.
 
-## Ví dụ đã điền (chỉ minh họa)
+## Ví dụ đã điền (chỉ minh họa, terrarium hư cấu)
 
-Wiki: `POST /permission`, `Body (Raw)` có `name | string | Y | max 255, trim`.
+Wiki: `POST /v1/terrariums/{terrariumCode}/readings`, body có thời điểm ghi nhận, nhiệt độ và độ ẩm.
 
 ```ts
-import { Transform } from 'class-transformer';
-import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import {
+  IsDateString,
+  IsInt,
+  IsNumber,
+  Max,
+  Min,
+} from 'class-validator';
 
-export class CreatePermissionDTO {
-  /** Permission name */
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(255)
-  name: string;
+export class CreateClimateReadingDTO {
+  /** Time when the sensor reading was recorded */
+  @IsDateString()
+  recordedAt: string;
+
+  /** Terrarium temperature in degrees Celsius */
+  @IsNumber()
+  @Min(-10)
+  @Max(60)
+  temperatureC: number;
+
+  /** Relative humidity percentage */
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  humidityPercent: number;
 }
 ```

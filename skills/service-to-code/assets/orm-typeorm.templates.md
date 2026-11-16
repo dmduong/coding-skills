@@ -2,7 +2,7 @@
 
 Quy tắc chọn API: [`references/orm-typeorm.conventions.md`](../references/orm-typeorm.conventions.md). Quy tắc Service, phân tích wiki và ánh xạ Step: [`references/service.conventions.md`](../references/service.conventions.md).
 
-Các ví dụ được chia theo từng trường hợp trong conventions. Tên entity/property bên dưới chỉ để minh họa; phải thay bằng tên đã đọc từ Entity thực tế. Nếu dự án có tầng Repository, đặt method dữ liệu trong Repository; nếu không, theo cấu trúc dữ liệu hợp lệ của dự án.
+Các ví dụ được chia theo từng trường hợp trong conventions. Domain terrarium và tên entity/property bên dưới là hư cấu, không đại diện cho schema dự án; phải thay bằng tên đã đọc từ Entity thực tế. Nếu dự án có tầng Repository, đặt method dữ liệu trong Repository; nếu không, theo cấu trúc dữ liệu hợp lệ của dự án.
 
 ## Bản đồ bao phủ conventions
 
@@ -32,7 +32,7 @@ Các API dưới đây thuộc TypeORM 0.3.x. Kiểm tra phiên bản và kiểu
 
 ## Ánh xạ Entity và property
 
-Property phải lấy từ entity source, không suy ra từ tên cột hoặc wiki. Ví dụ minh họa Entity có `id`, `name`, `deletedAt`:
+Property phải lấy từ entity source, không suy ra từ tên cột hoặc wiki. Ví dụ minh họa Entity terrarium có `id`, `code`, `label`, `deletedAt`:
 
 ```ts
 import {
@@ -42,13 +42,16 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
-@Entity('permission')
-export class PermissionEntity {
+@Entity('terrarium')
+export class TerrariumEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ name: 'permission_name', type: 'varchar', length: 255 })
-  name: string;
+  @Column({ name: 'terrarium_code', type: 'varchar', length: 24 })
+  code: string;
+
+  @Column({ name: 'display_label', type: 'varchar', length: 80 })
+  label: string;
 
   @DeleteDateColumn({ name: 'deleted_at', nullable: true })
   deletedAt: Date | null;
@@ -67,10 +70,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 @Injectable()
-export class PermissionService {
+export class TerrariumService {
   constructor(
-    @InjectRepository(PermissionEntity)
-    private readonly permissionRepository: Repository<PermissionEntity>,
+    @InjectRepository(TerrariumEntity)
+    private readonly terrariumRepository: Repository<TerrariumEntity>,
   ) {}
 }
 ```
@@ -80,11 +83,11 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([PermissionEntity])],
-  providers: [PermissionService],
-  exports: [PermissionService],
+  imports: [TypeOrmModule.forFeature([TerrariumEntity])],
+  providers: [TerrariumService],
+  exports: [TerrariumService],
 })
-export class PermissionModule {}
+export class TerrariumModule {}
 ```
 
 Nếu dự án dùng custom Repository, Service inject custom class đó thay vì `Repository<Entity>`. Ví dụ minh họa custom Repository kế thừa `BaseRepository`:
@@ -92,14 +95,14 @@ Nếu dự án dùng custom Repository, Service inject custom class đó thay v�
 ```ts
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { BaseRepository } from '../common/base-repository/base-repository';
-import { DocumentEntity } from './document.entity';
+import { BaseRepository } from '<verified-base-repository-module>';
+import { ClimateReadingEntity } from './climate-reading.entity';
 
 @Injectable()
-export class DocumentRepository extends BaseRepository<DocumentEntity> {
+export class ClimateReadingRepository extends BaseRepository<ClimateReadingEntity> {
   constructor(dataSource: DataSource) {
     super(
-      DocumentEntity,
+      ClimateReadingEntity,
       dataSource.createEntityManager(),
       dataSource.createQueryRunner(),
     );
@@ -118,15 +121,15 @@ Tất cả ví dụ trong phần này là method nằm trong Repository. Service
 Dùng `findOne` khi cần nhiều điều kiện hoặc options:
 
 ```ts
-public findByName(name: string): Promise<PermissionEntity | null> {
-  return this.findOne({ where: { name } });
+public findByCode(code: string): Promise<TerrariumEntity | null> {
+  return this.findOne({ where: { code } });
 }
 ```
 
 ### Find theo ID
 
 ```ts
-public findById(id: number): Promise<PermissionEntity | null> {
+public findById(id: number): Promise<TerrariumEntity | null> {
   return this.findOneBy({ id });
 }
 ```
@@ -138,16 +141,16 @@ Không chuyển `null` thành lỗi nếu wiki tách Find và Check thành hai S
 Dùng count khi cần boolean; không lấy toàn bộ Entity chỉ để kiểm tra:
 
 ```ts
-public async existsByName(name: string): Promise<boolean> {
-  return (await this.countBy({ name })) > 0;
+public async existsByCode(code: string): Promise<boolean> {
+  return (await this.countBy({ code })) > 0;
 }
 ```
 
 ### Find nhiều bản ghi
 
 ```ts
-public findAllByName(name: string): Promise<PermissionEntity[]> {
-  return this.findBy({ name });
+public findAllByCode(code: string): Promise<TerrariumEntity[]> {
+  return this.findBy({ code });
 }
 ```
 
@@ -160,29 +163,31 @@ Chỉ thêm `where`, `order`, quan hệ hoặc cột mà wiki yêu cầu. Chọn
 Khi điều kiện chỉ nằm trên bảng chính và chỉ cần nạp relation, dùng `findOne` options:
 
 ```ts
-public findByIdWithRoles(id: number): Promise<UserEntity | null> {
+public findByIdWithReadings(id: number): Promise<TerrariumEntity | null> {
   return this.findOne({
     where: { id },
-    relations: ['roles'],
+    relations: ['climateReadings'],
   });
 }
 ```
 
-`roles` phải là tên relation property của Entity, không phải tên bảng.
+`climateReadings` phải là tên relation property của Entity, không phải tên bảng.
 
 ### Lọc theo relation hoặc cần `innerJoin`
 
 Dùng QueryBuilder khi cần predicate trên bảng quan hệ hoặc cần loại bản ghi không có relation khớp:
 
+Các relation `climateReadings` và `sensors` trong ví dụ là giả định thuộc schema terrarium hư cấu; chỉ dùng relation thực sự có trong Entity.
+
 ```ts
-public findByIdAndRefreshToken(
+public findByIdAndSensorCode(
   id: number,
-  refreshToken: string,
-): Promise<UserEntity | null> {
-  return this.createQueryBuilder('user')
-    .innerJoin('user.tokens', 'token')
-    .where('user.id = :id', { id })
-    .andWhere('token.refreshToken = :refreshToken', { refreshToken })
+  sensorCode: string,
+): Promise<TerrariumEntity | null> {
+  return this.createQueryBuilder('terrarium')
+    .innerJoin('terrarium.sensors', 'sensor')
+    .where('terrarium.id = :id', { id })
+    .andWhere('sensor.code = :sensorCode', { sensorCode })
     .getOne();
 }
 ```
@@ -194,11 +199,11 @@ Tên alias/property phải khớp Entity. Luôn truyền giá trị qua named pa
 Chỉ chọn field cần dùng để tránh tải hoặc làm lộ field nhạy cảm. Khi gọi `.select([...])`, dùng `innerJoin`/`leftJoin`, không dùng `...AndSelect`, vì `.select` sẽ ghi đè selection:
 
 ```ts
-public findUserSummary(id: number): Promise<UserEntity | null> {
-  return this.createQueryBuilder('user')
-    .innerJoin('user.roles', 'role')
-    .select(['user.id', 'user.email', 'role.id', 'role.name'])
-    .where('user.id = :id', { id })
+public findTerrariumReadingSummary(id: number): Promise<TerrariumEntity | null> {
+  return this.createQueryBuilder('terrarium')
+    .innerJoin('terrarium.climateReadings', 'reading')
+    .select(['terrarium.id', 'terrarium.code', 'reading.id', 'reading.recordedAt'])
+    .where('terrarium.id = :id', { id })
     .getOne();
 }
 ```
@@ -213,7 +218,7 @@ Không chọn password, token hoặc field nội bộ nếu Step không yêu c�
 public findPage(
   page: number,
   limit: number,
-): Promise<[PermissionEntity[], number]> {
+): Promise<[TerrariumEntity[], number]> {
   return this.findAndCount({
     order: { id: 'DESC' },
     skip: (page - 1) * limit,
@@ -225,12 +230,12 @@ public findPage(
 Kèm relation khi wiki yêu cầu:
 
 ```ts
-public findPageWithRoles(
+public findPageWithReadings(
   page: number,
   limit: number,
-): Promise<[UserEntity[], number]> {
+): Promise<[TerrariumEntity[], number]> {
   return this.findAndCount({
-    relations: ['roles'],
+    relations: ['climateReadings'],
     order: { id: 'DESC' },
     skip: (page - 1) * limit,
     take: limit,
@@ -251,20 +256,20 @@ Xem quy tắc chọn API và vị trí QueryBuilder trong [`orm-typeorm.conventi
 ### `save`: một bản ghi, Step sau cần Entity/ID hoặc cần hook/cascade
 
 ```ts
-public createPermission(name: string): Promise<PermissionEntity> {
-  const permission = this.create({ name });
-  return this.save(permission);
+public createTerrarium(code: string): Promise<TerrariumEntity> {
+  const terrarium = this.create({ code });
+  return this.save(terrarium);
 }
 ```
 
 Service dùng `id` từ Entity đã lưu:
 
 ```ts
-// Step 1: Create the permission
-const permission = await this.permissionRepository.createPermission(body.name);
+// Step 1: Create the terrarium
+const terrarium = await this.terrariumRepository.createTerrarium(body.code);
 
-// Step 2: Create a child record using the generated id
-await this.childRepository.createForPermission(permission.id);
+// Step 2: Create an initial climate reading using the generated id
+await this.climateReadingRepository.createForTerrarium(terrarium.id);
 ```
 
 ### `insert`: bulk hoặc không cần Entity trả về
@@ -273,7 +278,7 @@ Khi không cần kết quả database, trả `Promise<void>`:
 
 ```ts
 public async createMany(
-  rows: Array<Pick<UserRoleEntity, 'userId' | 'roleId'>>,
+  rows: Array<Pick<TerrariumSensorEntity, 'terrariumId' | 'sensorId'>>,
 ): Promise<void> {
   await this.insert(rows);
 }
@@ -282,10 +287,10 @@ public async createMany(
 Khi cần generated ID, đọc `identifiers`; kết quả vẫn là `InsertResult`, không phải Entity:
 
 ```ts
-public createPermissionAndReturnId(
-  name: string,
+public createTerrariumAndReturnId(
+  code: string,
 ): Promise<InsertResult> {
-  return this.insert({ name });
+  return this.insert({ code });
 }
 ```
 
@@ -293,8 +298,8 @@ Step sử dụng ID đọc từ kết quả, không coi `InsertResult` là Entit
 
 ```ts
 const insertResult =
-  await this.permissionRepository.createPermissionAndReturnId(body.name);
-const permissionId = insertResult.identifiers[0]?.id;
+  await this.terrariumRepository.createTerrariumAndReturnId(body.code);
+const terrariumId = insertResult.identifiers[0]?.id;
 ```
 
 Chỉ dùng mẫu này nếu DB/driver đã xác nhận generated identifier được trả. Nếu Step bắt buộc ID mà driver không đảm bảo trả về, hỏi hoặc dùng `save` thay vì giả định.
@@ -310,8 +315,8 @@ Xem cách chọn `save` hay `insert` trong [`orm-typeorm.conventions.md`](../ref
 `UpdateResult.affected` có thể là `undefined` tùy driver; dùng nullish guard. Chỉ chuyển kết quả thành not-found nếu flow/wiki yêu cầu:
 
 ```ts
-public async updateName(id: number, name: string): Promise<boolean> {
-  const result = await this.update({ id }, { name });
+public async updateLabel(id: number, label: string): Promise<boolean> {
+  const result = await this.update({ id }, { label });
   return (result.affected ?? 0) > 0;
 }
 ```
@@ -319,8 +324,8 @@ public async updateName(id: number, name: string): Promise<boolean> {
 Service chỉ ánh xạ `false` thành lỗi khi có Step/On failure tương ứng:
 
 ```ts
-// Step 2: Update the permission
-const updated = await this.permissionRepository.updateName(id, body.name);
+// Step 2: Update the terrarium label
+const updated = await this.terrariumRepository.updateLabel(id, body.label);
 
 // Add a Check/exception here only if the wiki specifies it.
 ```
@@ -332,15 +337,15 @@ Load bằng Repository, cập nhật đúng field trong wiki rồi save:
 ```ts
 public async updateAndReturn(
   id: number,
-  name: string,
-): Promise<PermissionEntity | null> {
-  const permission = await this.findOneBy({ id });
-  if (!permission) {
+  label: string,
+): Promise<TerrariumEntity | null> {
+  const terrarium = await this.findOneBy({ id });
+  if (!terrarium) {
     return null;
   }
 
-  permission.name = name;
-  return this.save(permission);
+  terrarium.label = label;
+  return this.save(terrarium);
 }
 ```
 
@@ -381,9 +386,9 @@ Khi dự án có Repository layer, nhận `queryRunner` làm tham số đầu ti
 ```ts
 public createWithTransaction(
   queryRunner: QueryRunner,
-  data: Partial<DocumentEntity>,
-): Promise<DocumentEntity> {
-  const repository = queryRunner.manager.getRepository(DocumentEntity);
+  data: Partial<ClimateReadingEntity>,
+): Promise<ClimateReadingEntity> {
+  const repository = queryRunner.manager.getRepository(ClimateReadingEntity);
   return repository.save(repository.create(data));
 }
 ```
@@ -393,9 +398,9 @@ Bulk insert trong cùng transaction:
 ```ts
 public async createManyWithTransaction(
   queryRunner: QueryRunner,
-  rows: Array<Pick<UserRoleEntity, 'userId' | 'roleId'>>,
+  rows: Array<Pick<TerrariumSensorEntity, 'terrariumId' | 'sensorId'>>,
 ): Promise<void> {
-  await queryRunner.manager.getRepository(UserRoleEntity).insert(rows);
+  await queryRunner.manager.getRepository(TerrariumSensorEntity).insert(rows);
 }
 ```
 
@@ -405,10 +410,10 @@ Update/delete trong transaction:
 public async updateWithTransaction(
   queryRunner: QueryRunner,
   id: number,
-  data: Partial<DocumentEntity>,
+  data: Partial<ClimateReadingEntity>,
 ): Promise<boolean> {
   const result = await queryRunner.manager
-    .getRepository(DocumentEntity)
+    .getRepository(ClimateReadingEntity)
     .update({ id }, data);
   return (result.affected ?? 0) > 0;
 }
@@ -421,30 +426,35 @@ Không gọi `this.save`, `this.insert`, repository thường hoặc service tru
 Ví dụ này chỉ transaction hóa các thao tác DB. Thay logger theo cơ chế hiện có; rollback failure được log nhưng lỗi gốc vẫn được ném lại.
 
 ```ts
+import { Injectable, Logger } from '@nestjs/common';
+
 @Injectable()
-export class DocumentService {
+export class ClimateReadingService {
   constructor(
     private readonly dataSource: DataSource,
-    private readonly documentRepository: DocumentRepository,
-    private readonly historyRepository: DocumentHistoryRepository,
-    private readonly logger: NestJsLoggerService,
+    private readonly climateReadingRepository: ClimateReadingRepository,
+    private readonly auditRepository: ClimateReadingAuditRepository,
   ) {}
 
-  public async create(body: CreateDocumentDTO): Promise<DocumentEntity> {
+  public async create(body: CreateClimateReadingDTO): Promise<ClimateReadingEntity> {
     // Include consistency-sensitive reads and checks inside this transaction.
     return this.runInTransaction(async (queryRunner) => {
-      // Step 1: Create the document
-      const document = await this.documentRepository.createWithTransaction(
+      // Step 1: Create the climate reading
+      const climateReading = await this.climateReadingRepository.createWithTransaction(
         queryRunner,
-        { name: body.name },
+        {
+          recordedAt: new Date(body.recordedAt),
+          temperatureC: body.temperatureC,
+          humidityPercent: body.humidityPercent,
+        },
       );
 
-      // Step 2: Create its history
-      await this.historyRepository.createWithTransaction(queryRunner, {
-        documentId: document.id,
+      // Step 2: Create its audit record
+      await this.auditRepository.createWithTransaction(queryRunner, {
+        climateReadingId: climateReading.id,
       });
 
-      return document;
+      return climateReading;
     });
   }
 
@@ -465,7 +475,7 @@ export class DocumentService {
         try {
           await queryRunner.rollbackTransaction();
         } catch (rollbackError) {
-          this.logger.errors(rollbackError);
+          Logger.error(rollbackError);
         }
       }
 
@@ -477,11 +487,11 @@ export class DocumentService {
 }
 ```
 
-`DataSource`, `QueryRunner`, Entity, DTO, Repository, logger and output types must be imported from the actual project and aligned with its real signatures. If there is no suitable logger, use the project's established error-reporting mechanism; do not silently discard rollback errors.
+`DataSource`, `QueryRunner`, Entity, DTO, Repository, and output types must be imported from the actual project and aligned with its real signatures. The standard Nest logger above is illustrative; use the project's established error-reporting mechanism if required, and do not silently discard rollback errors.
 
 ### External service/API inside a DB transaction
 
-A database rollback cannot undo an S3 upload, email, or external API call. Do not claim that such a side effect is atomic with the DB transaction. If the wiki explicitly puts an external call in the flow, follow its specified ordering and failure behavior; ask about compensation/retry semantics when needed rather than inventing them.
+A database rollback cannot undo an object-storage write, notification delivery, or external API call. Do not claim that such a side effect is atomic with the DB transaction. If the wiki explicitly puts an external call in the flow, follow its specified ordering and failure behavior; ask about compensation/retry semantics when needed rather than inventing them.
 
 ## Duplicate key (`ER_DUP_ENTRY`)
 
@@ -502,10 +512,10 @@ Map the duplicate to the documented conflict exception/message in the Service, f
 
 ```ts
 try {
-  await this.permissionRepository.createPermission(body.name);
+  await this.terrariumRepository.createTerrarium(body.code);
 } catch (error) {
   if (isDuplicateEntryError(error)) {
-    throw new ConflictException(ErrorMessages.PERMISSION_NAME_ALREADY_EXISTS);
+    throw new ConflictException('TERRARIUM_CODE_ALREADY_EXISTS');
   }
 
   throw error;

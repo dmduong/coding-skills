@@ -2,7 +2,7 @@
 
 Quy tắc chuẩn: [`references/service.conventions.md`](../references/service.conventions.md). Chỉ dùng ví dụ TypeORM khi ORM/driver tương ứng được xác nhận; theo tầng dữ liệu của dự án.
 
-Các ví dụ dưới đây là mẫu theo từng phần/action của conventions, không phải một API mẫu cần chép nguyên. Những đoạn được ghi là lời gọi/handler body cần đặt trong method; các chữ trong `{...}` là placeholder. Thay tên lớp, kiểu, Repository, field và exception theo wiki và source thực tế. Không thêm bước, điều kiện, transaction hay field mà wiki không yêu cầu.
+Các ví dụ dưới đây là mẫu theo từng phần/action của conventions, không phải một API mẫu cần chép nguyên. Domain terrarium và tên liên quan là hư cấu, không đại diện cho tài nguyên hay class có sẵn trong dự án. Những đoạn được ghi là lời gọi/handler body cần đặt trong method; các chữ trong `{...}` là placeholder. Thay tên lớp, kiểu, Repository, field và exception theo wiki và source thực tế. Không thêm bước, điều kiện, transaction hay field mà wiki không yêu cầu.
 
 ## Bản đồ bao phủ conventions
 
@@ -88,11 +88,11 @@ Chỉ thêm tham số nếu `Details` cần danh tính người dùng; giữ ch�
 
 ```ts
 public async update(
-  body: UpdateUserDTO,
-  userId: number,
+  body: CreateClimateReadingDTO,
+  terrariumCode: string,
 ): Promise<void> {
-  // Step 1: Update only the user identified by the wiki
-  await this.userRepository.updateUser(userId, body);
+  // Step 1: Update the reading for the terrarium identified by the wiki
+  await this.climateReadingRepository.updateForTerrarium(terrariumCode, body);
 }
 ```
 
@@ -123,22 +123,22 @@ Với custom repository hoặc module đã có wiring khác, làm theo module c�
 Service gọi Repository; tên biến phải khớp với `Output`. Các truy vấn `find*`, QueryBuilder, relation và phân trang được định nghĩa trong Repository theo [`orm-typeorm.templates.md`](./orm-typeorm.templates.md).
 
 ```ts
-private async findPermissionById(
-  permissionId: number,
-): Promise<PermissionEntity | null> {
-  return this.permissionRepository.findById(permissionId);
+private async findTerrariumById(
+  terrariumId: number,
+): Promise<TerrariumEntity | null> {
+  return this.terrariumRepository.findById(terrariumId);
 }
 ```
 
 ```ts
-// Step 1: Find the permission by id
-const permission = await this.findPermissionById(permissionId);
+// Step 1: Find the terrarium by id
+const terrarium = await this.findTerrariumById(terrariumId);
 ```
 
 Khai báo Repository có kiểu rõ ràng, ví dụ (cú pháp cụ thể theo ORM template):
 
 ```ts
-public findById(id: number): Promise<PermissionEntity | null> {
+public findById(id: number): Promise<TerrariumEntity | null> {
   return this.findOneBy({ id });
 }
 ```
@@ -150,17 +150,17 @@ Kết quả không tồn tại được xử lý ở Step Check kế tiếp nế
 Service chuyển tham số đã được wiki/DTO nêu đến Repository. Cài truy vấn phân trang hoặc join trong Repository theo [`orm-typeorm.templates.md`](./orm-typeorm.templates.md); không đặt QueryBuilder hay cú pháp TypeORM trong Service:
 
 ```ts
-private async findUserPage(
+private async findTerrariumPage(
   page: number,
   limit: number,
-): Promise<[UserEntity[], number]> {
-  return this.userRepository.findPageWithRoles(page, limit);
+): Promise<[TerrariumEntity[], number]> {
+  return this.terrariumRepository.findPageWithReadings(page, limit);
 }
 ```
 
 ```ts
-// Step 1: Find the requested user page with its documented relation
-const [users, total] = await this.findUserPage(page, limit);
+// Step 1: Find the requested terrarium page with its documented relation
+const [terrariums, total] = await this.findTerrariumPage(page, limit);
 ```
 
 Không tải relation hoặc thêm pagination nếu wiki không yêu cầu. Chỉ đưa vào truy vấn các cột/quan hệ cần thiết.
@@ -170,33 +170,33 @@ Không tải relation hoặc thêm pagination nếu wiki không yêu cầu. Ch�
 Điều kiện chỉ lấy từ `Details`. Theo quy ước Service, Step helper là `async` và có kiểu trả về tường minh, kể cả khi chỉ kiểm tra dữ liệu đã có.
 
 ```ts
-private async findPermissionOrFail(
-  permissionId: number,
-): Promise<PermissionEntity> {
-  const permission = await this.permissionRepository.findById(permissionId);
-  if (!permission) {
-    throw new NotFoundException(ErrorMessages.PERMISSION_NOT_FOUND);
+private async findTerrariumOrFail(
+  terrariumId: number,
+): Promise<TerrariumEntity> {
+  const terrarium = await this.terrariumRepository.findById(terrariumId);
+  if (!terrarium) {
+    throw new NotFoundException(TerrariumErrorMessages.TERRARIUM_NOT_FOUND);
   }
-  return permission;
+  return terrarium;
 }
 ```
 
 Gọi helper trong method điều phối:
 
 ```ts
-// Step 2: Find the permission or fail
-const permission = await this.findPermissionOrFail(permissionId);
+// Step 2: Find the terrarium or fail
+const terrarium = await this.findTerrariumOrFail(terrariumId);
 ```
 
 Kiểm tra quan hệ hoặc số lượng bản ghi theo điều kiện thực tế trong wiki:
 
 ```ts
-private async assertAllRolesExist(
-  roles: RoleEntity[],
-  requestedRoleIds: number[],
+private async assertAllSensorsExist(
+  sensors: SensorEntity[],
+  requestedSensorIds: number[],
 ): Promise<void> {
-  if (roles.length !== requestedRoleIds.length) {
-    throw new BadRequestException(ErrorMessages.ROLE_NOT_FOUND);
+  if (sensors.length !== requestedSensorIds.length) {
+    throw new BadRequestException(TerrariumErrorMessages.SENSOR_NOT_FOUND);
   }
 }
 ```
@@ -204,30 +204,30 @@ private async assertAllRolesExist(
 Gọi Check helper trong method điều phối:
 
 ```ts
-// Step 3: Fail when not all requested roles exist
-await this.assertAllRolesExist(roles, requestedRoleIds);
+// Step 3: Fail when not all requested sensors exist
+await this.assertAllSensorsExist(sensors, requestedSensorIds);
 ```
 
-`ErrorMessages.PERMISSION_NOT_FOUND` và `ErrorMessages.ROLE_NOT_FOUND` chỉ là tên minh họa. Dùng enum/constant và hình dạng lỗi thực tế của dự án; chỉ thêm member theo [`workflow.md`](../../docs-to-code/rules/workflow.md), không tự tạo enum trùng.
+`TerrariumErrorMessages.TERRARIUM_NOT_FOUND` và `TerrariumErrorMessages.SENSOR_NOT_FOUND` chỉ là tên minh họa. Dùng enum/constant và hình dạng lỗi thực tế của dự án; chỉ thêm member theo [`workflow.md`](../../docs-to-code/rules/workflow.md), không tự tạo enum trùng.
 
 ### Create: tạo bản ghi
 
 Chọn `save` hoặc `insert` theo nhu cầu output/hook/cascade ở ORM template. Khi Step sau cần entity/id, Repository nên trả entity đã lưu:
 
 ```ts
-private async createPermission(name: string): Promise<PermissionEntity> {
-  return this.permissionRepository.createPermission(name);
+private async createTerrarium(code: string): Promise<TerrariumEntity> {
+  return this.terrariumRepository.createTerrarium(code);
 }
 ```
 
 ```ts
-// Step 3: Create the permission
-const permission = await this.createPermission(body.name);
+// Step 3: Create the terrarium
+const terrarium = await this.createTerrarium(body.code);
 ```
 
 ```ts
-public createPermission(name: string): Promise<PermissionEntity> {
-  return this.save(this.create({ name }));
+public createTerrarium(code: string): Promise<TerrariumEntity> {
+  return this.save(this.create({ code }));
 }
 ```
 
@@ -238,28 +238,28 @@ Nếu wiki yêu cầu thêm nhiều bản ghi và không cần kết quả, Repo
 Đưa vào payload đúng các field mà wiki cho phép. Nếu cần biết bản ghi có được cập nhật hay không, Repository trả boolean; chỉ ném lỗi not-found nếu wiki quy định:
 
 ```ts
-private async updatePermissionName(
-  permissionId: number,
-  name: string,
+private async updateTerrariumLabel(
+  terrariumId: number,
+  label: string,
 ): Promise<void> {
-  const updated = await this.permissionRepository.updateName(
-    permissionId,
-    name,
+  const updated = await this.terrariumRepository.updateLabel(
+    terrariumId,
+    label,
   );
   if (!updated) {
-    throw new NotFoundException(ErrorMessages.PERMISSION_NOT_FOUND);
+    throw new NotFoundException(TerrariumErrorMessages.TERRARIUM_NOT_FOUND);
   }
 }
 ```
 
 ```ts
-// Step 4: Update the permission name
-await this.updatePermissionName(permissionId, body.name);
+// Step 4: Update the terrarium label
+await this.updateTerrariumLabel(terrariumId, body.label);
 ```
 
 ```ts
-public async updateName(id: number, name: string): Promise<boolean> {
-  const result = await this.update({ id }, { name });
+public async updateLabel(id: number, label: string): Promise<boolean> {
+  const result = await this.update({ id }, { label });
   return (result.affected ?? 0) > 0;
 }
 ```
@@ -271,17 +271,17 @@ Nếu Step tiếp theo cần entity đã cập nhật, Repository có thể load
 Chọn `delete` hay `softDelete` theo Entity và wiki. Kiểm tra `affected` chỉ khi flow yêu cầu phân biệt không tìm thấy:
 
 ```ts
-private async removePermission(permissionId: number): Promise<void> {
-  const removed = await this.permissionRepository.removeById(permissionId);
+private async removeTerrarium(terrariumId: number): Promise<void> {
+  const removed = await this.terrariumRepository.removeById(terrariumId);
   if (!removed) {
-    throw new NotFoundException(ErrorMessages.PERMISSION_NOT_FOUND);
+    throw new NotFoundException(TerrariumErrorMessages.TERRARIUM_NOT_FOUND);
   }
 }
 ```
 
 ```ts
-// Step 5: Remove the permission
-await this.removePermission(permissionId);
+// Step 5: Remove the terrarium
+await this.removeTerrarium(terrariumId);
 ```
 
 ```ts
@@ -298,32 +298,33 @@ Repository chỉ dùng `softDelete` khi Entity có cột soft-delete và đúng 
 Dùng dependency/helper hiện có, khai báo kiểu đầu vào/đầu ra và không hard-code secret, URL hay thời hạn:
 
 ```ts
-private async generateAccessToken(
-  payload: JwtPayload,
-): Promise<string> {
-  return this.jwtService.signAsync(payload);
+private async getTemperatureCompensation(
+  sensorCode: string,
+): Promise<number> {
+  return this.calibrationService.getOffset(sensorCode);
 }
 ```
 
 ```ts
-// Step 6: Generate the access token
-const accessToken = await this.generateAccessToken(payload);
+// Step 6: Get the sensor's temperature compensation
+const temperatureCompensation =
+  await this.getTemperatureCompensation(sensorCode);
 ```
 
 Nếu Step là tính toán đồng bộ, gọi hàm đồng bộ và không thêm `await`:
 
 ```ts
-const documentPath = createDocumentPath(
-  document.id,
-  documentHistory.id,
+const reportPath = createClimateReportPath(
+  terrarium.code,
+  reportDate,
 );
 ```
 
 Thêm comment Step ở lời gọi runtime trong method điều phối:
 
 ```ts
-// Step 6: Compute the document path
-const documentPath = createDocumentPath(document.id, documentHistory.id);
+// Step 6: Compute the climate report path
+const reportPath = createClimateReportPath(terrarium.code, reportDate);
 ```
 
 Không thêm dependency hoặc tự tạo service thay thế khi dự án chưa có; nêu thiếu sót trong báo cáo.
@@ -335,19 +336,19 @@ Không thêm dependency hoặc tự tạo service thay thế khi dự án chưa 
 Ví dụ khi wiki chỉ rõ helper tạo đường dẫn:
 
 ```ts
-export function createDocumentPath(
-  documentId: number,
-  documentHistoryId: number,
+export function createClimateReportPath(
+  terrariumCode: string,
+  reportDate: string,
 ): string {
-  return `${documentId}/origin/${documentHistoryId}/${Date.now()}.pdf`;
+  return `${terrariumCode}/reports/${reportDate}.csv`;
 }
 ```
 
 Sau đó Step runtime sử dụng helper mới ở đúng vị trí trong flow:
 
 ```ts
-// Step 4: Compute the document path
-const documentPath = createDocumentPath(document.id, documentHistory.id);
+// Step 4: Compute the climate report path
+const reportPath = createClimateReportPath(terrarium.code, reportDate);
 ```
 
 Đặt helper tại file/phạm vi dùng chung theo dự án. Không biến `Create helper` thành lỗi HTTP hoặc thêm comment `// Step N` runtime cho thao tác khai báo helper.
@@ -357,30 +358,30 @@ const documentPath = createDocumentPath(document.id, documentHistory.id);
 Inject service đã tồn tại, dùng đúng phương thức và kiểu trả về. Không tạo service/dependency mới để làm ví dụ:
 
 ```ts
-private async uploadDocumentFile(
-  documentPath: string,
-  fileBuffer: Buffer,
+private async storeClimateReport(
+  reportPath: string,
+  reportContent: Buffer,
   contentType: string,
 ): Promise<void> {
-  const uploadResult = await this.s3Service.uploadFile(
-    documentPath,
-    fileBuffer,
+  const storeResult = await this.reportStorageService.store(
+    reportPath,
+    reportContent,
     contentType,
   );
-  if (!uploadResult) {
+  if (!storeResult) {
     throw new InternalServerErrorException(
-      ErrorMessages.ERR_CREATE_DOCUMENT_FAILED,
+      TerrariumErrorMessages.ERR_CLIMATE_REPORT_STORE_FAILED,
     );
   }
 }
 ```
 
 ```ts
-// Step 7: Upload the document
-await this.uploadDocumentFile(documentPath, fileBuffer, contentType);
+// Step 7: Store the climate report
+await this.storeClimateReport(reportPath, reportContent, contentType);
 ```
 
-Nếu `Output` là `-`, chỉ `await` lời gọi. Xử lý lỗi đúng theo `On failure`; dùng dependency/service đã có trong source, không mặc định dự án có `S3Service`. Nếu lời gọi nằm trong transaction, chỉ coi nó là một phần transaction khi wiki yêu cầu và cơ chế đó thực sự bao gồm tác động ngoài database; không giả định rollback database có thể undo một API/S3 call.
+Nếu `Output` là `-`, chỉ `await` lời gọi. Xử lý lỗi đúng theo `On failure`; dùng dependency/service đã có trong source, không mặc định dự án có dịch vụ lưu trữ object. Nếu lời gọi nằm trong transaction, chỉ coi nó là một phần transaction khi wiki yêu cầu và cơ chế đó thực sự bao gồm tác động ngoài database; không giả định rollback database có thể undo một tác động bên ngoài.
 
 ### Return: dựng kết quả chính xác
 
@@ -389,25 +390,26 @@ Không trả toàn bộ Entity. Dựng đúng các property trong bảng `Respon
 Khi Service trả object nội bộ và Controller chuyển sang RO:
 
 ```ts
-private async toPermissionResult(
-  permission: PermissionEntity,
-): Promise<{ id: number; name: string }> {
+private async toClimateReadingResult(
+  climateReading: ClimateReadingEntity,
+): Promise<{ id: number; recordedAt: string; temperatureC: number }> {
   return {
-    id: permission.id,
-    name: permission.name,
+    id: climateReading.id,
+    recordedAt: climateReading.recordedAt.toISOString(),
+    temperatureC: climateReading.temperatureC,
   };
 }
 ```
 
 ```ts
-// Step 8: Return the permission
-return this.toPermissionResult(permission);
+// Step 8: Return the climate reading
+return this.toClimateReadingResult(climateReading);
 ```
 
 ```ts
-public async create(
-  body: CreatePermissionDTO,
-): Promise<{ id: number; name: string }> {
+public async createClimateReading(
+  body: CreateClimateReadingDTO,
+): Promise<{ id: number; recordedAt: string; temperatureC: number }> {
   // Các Step theo wiki...
 }
 ```
@@ -415,7 +417,7 @@ public async create(
 Khi wiki yêu cầu không có response body (`204`):
 
 ```ts
-public async update(permissionId: number): Promise<void> {
+public async update(terrariumId: number): Promise<void> {
   // Các Step theo wiki...
   return;
 }
@@ -424,12 +426,16 @@ public async update(permissionId: number): Promise<void> {
 Nếu dự án dùng class-transformer và Service trả RO, dựng đúng data rồi chuyển trong hàm con:
 
 ```ts
-private async toPermissionRO(
-  permission: PermissionEntity,
-): Promise<PermissionRO> {
+private async toClimateReadingRO(
+  climateReading: ClimateReadingEntity,
+): Promise<ClimateReadingRO> {
   return plainToInstance(
-    PermissionRO,
-    { id: permission.id, name: permission.name },
+    ClimateReadingRO,
+    {
+      id: climateReading.id,
+      recordedAt: climateReading.recordedAt.toISOString(),
+      temperatureC: climateReading.temperatureC,
+    },
     { excludeExtraneousValues: true },
   );
 }
@@ -443,20 +449,20 @@ Thực hiện đúng đồ thị `Next`; các comment giữ số Step của wiki
 
 ```ts
 // Step 2: Select the next action
-let permission: PermissionEntity;
+let terrarium: TerrariumEntity;
 if (shouldCreate) {
-  // Step 3: Create the permission
-  permission = await this.createPermission(body.name);
+  // Step 3: Create the terrarium
+  terrarium = await this.createTerrarium(body.code);
 } else {
-  // Step 4: Find the existing permission
-  permission = await this.findPermissionById(permissionId);
+  // Step 4: Find the existing terrarium
+  terrarium = await this.findTerrariumById(terrariumId);
 }
 
-// Step 5: Return the permission
-return await this.toPermissionResult(permission);
+// Step 5: Return the terrarium
+return await this.toTerrariumResult(terrarium);
 ```
 
-Trong method thực tế, khai báo biến bằng kiểu trả về của cả hai nhánh, ví dụ `let permission: PermissionEntity;`. `shouldCreate` ở đây là placeholder cho điều kiện đã có trong wiki. Nếu nhánh kết thúc sớm, dùng `return` ở nhánh tương ứng; không tự tạo điều kiện hoặc nhánh.
+Trong method thực tế, khai báo biến bằng kiểu trả về của cả hai nhánh, ví dụ `let terrarium: TerrariumEntity;`. `shouldCreate` ở đây là placeholder cho điều kiện đã có trong wiki. Nếu nhánh kết thúc sớm, dùng `return` ở nhánh tương ứng; không tự tạo điều kiện hoặc nhánh.
 
 ## Lỗi theo `On failure`
 
@@ -467,13 +473,13 @@ import { NotFoundException } from '@nestjs/common';
 ```
 
 ```ts
-private async ensurePermissionExists(
-  permission: PermissionEntity | null,
-): Promise<PermissionEntity> {
-  if (!permission) {
-    throw new NotFoundException(ErrorMessages.PERMISSION_NOT_FOUND);
+private async ensureTerrariumExists(
+  terrarium: TerrariumEntity | null,
+): Promise<TerrariumEntity> {
+  if (!terrarium) {
+    throw new NotFoundException(TerrariumErrorMessages.TERRARIUM_NOT_FOUND);
   }
-  return permission;
+  return terrarium;
 }
 ```
 
@@ -489,8 +495,8 @@ import { HttpException } from '@nestjs/common';
 private async throwCustomFailure(status: number): Promise<never> {
   throw new HttpException(
     {
-      message: ErrorMessages.CUSTOM_FAILURE,
-      error: ErrorCodes.CUSTOM_FAILURE,
+      message: TerrariumErrorMessages.CUSTOM_FAILURE,
+      error: TerrariumErrorCodes.CUSTOM_FAILURE,
       statusCode: status,
     },
     status,
@@ -500,7 +506,7 @@ private async throwCustomFailure(status: number): Promise<never> {
 
 Status trong `Response > Error` là kết quả cuối. Giữ nguyên message wiki từng ký tự và dùng constant sẵn có khi phù hợp. Nếu `On failure` khác `Response > Error`, dừng và hỏi.
 
-Ví dụ đối chiếu: nếu Error table ghi `404 | ERR_PERMISSION_NOT_FOUND | 2`, chỉ Step 2 được ánh xạ sang `NotFoundException(ErrorMessages.ERR_PERMISSION_NOT_FOUND)`; không đưa lỗi này vào Step 1 hoặc Step 3.
+Các tên `TerrariumErrorMessages` và `TerrariumErrorCodes` ở trên là placeholder hư cấu; thay bằng cơ chế lỗi đã xác minh trong dự án. Ví dụ đối chiếu: nếu Error table ghi `404 | ERR_TERRARIUM_NOT_FOUND | 2`, chỉ Step 2 được ánh xạ sang `NotFoundException(TerrariumErrorMessages.ERR_TERRARIUM_NOT_FOUND)`; không đưa lỗi này vào Step 1 hoặc Step 3.
 
 Nếu nhiều thao tác nằm trong cùng transaction và wiki gán cùng một lỗi cho nhóm đó, rollback, ghi log theo chuẩn dự án khi cần, rồi ném lỗi đã ánh xạ theo workflow và giữ nguyên cause. Ví dụ TypeORM ở [`orm-typeorm.templates.md`](./orm-typeorm.templates.md). Không nuốt lỗi hoặc trả thành công giả.
 
@@ -512,18 +518,19 @@ Hình dạng điều phối Service:
 
 ```ts
 public async create(
-  body: CreatePermissionDTO,
-): Promise<PermissionEntity> {
+  terrariumCode: string,
+  body: CreateClimateReadingDTO,
+): Promise<ClimateReadingEntity> {
   // Steps requiring a consistent read and write share one transaction.
-  const permission = await this.runInTransaction((queryRunner) =>
-    this.createPermissionWithChecks(queryRunner, body),
+  const climateReading = await this.runInTransaction((queryRunner) =>
+    this.createClimateReadingWithChecks(queryRunner, terrariumCode, body),
   );
 
   // Step 5: Return after commit
-  return permission;
+  return climateReading;
 }
 ```
 
-Các bước cần tính nhất quán bên trong `createPermissionWithChecks` phải dùng cùng transaction context theo cấu trúc dữ liệu dự án. `runInTransaction` phải connect/start, commit khi thành công, rollback khi lỗi, rethrow lỗi, và release trong `finally`. Nếu có nhiều bước ghi mà yêu cầu tính nhất quán chưa rõ, hỏi người dùng.
+Các bước cần tính nhất quán bên trong `createClimateReadingWithChecks` phải dùng cùng transaction context theo cấu trúc dữ liệu dự án. `runInTransaction` phải connect/start, commit khi thành công, rollback khi lỗi, rethrow lỗi, và release trong `finally`. Nếu có nhiều bước ghi mà yêu cầu tính nhất quán chưa rõ, hỏi người dùng.
 
 Checklist, báo cáo và phạm vi nằm trong [`service.conventions.md`](../references/service.conventions.md).

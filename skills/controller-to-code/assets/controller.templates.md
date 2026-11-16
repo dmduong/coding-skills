@@ -49,26 +49,34 @@ export class {Controller} {
 
 Controller không chứa logic nghiệp vụ; comment theo quy ước dự án.
 
-## Ví dụ đã điền (chỉ minh họa, Controller chuyển RO)
+## Ví dụ đã điền (chỉ minh họa, terrarium hư cấu)
 
 ```ts
-@Controller('permission')
-export class PermissionController {
-  constructor(private readonly permissionService: PermissionService) {}
+@Controller('terrariums')
+export class TerrariumController {
+  constructor(
+    private readonly climateReadingService: ClimateReadingService,
+  ) {}
 
   /**
-   * Create a new permission.
-   * @route POST /permission
+   * Record a climate reading.
+   * @route POST /v1/terrariums/:terrariumCode/readings
    */
-  @Post()
-  @RoleJwtGuards(Role.Admin)
-  async create(@Body() body: CreatePermissionDTO) {
-    const result = await this.permissionService.create(body);
-    return plainToInstance(CreatePermissionRO, result, {
+  // Add the verified authorization decorator for the fictional TerrariumOperator role.
+  @Post(':terrariumCode/readings')
+  async createClimateReading(
+    @Param('terrariumCode') terrariumCode: string,
+    @Body() body: CreateClimateReadingDTO,
+  ) {
+    const result = await this.climateReadingService.create(
+      terrariumCode,
+      body,
+    );
+    return plainToInstance(ClimateReadingRO, result, {
       excludeExtraneousValues: true,
     });
   }
 }
 ```
 
-Import dùng đường dẫn thực tế của dự án; ví dụ trên không liệt kê import.
+Import dùng đường dẫn thực tế của dự án; ví dụ trên không liệt kê import. Tên role và DTO chỉ thuộc API hư cấu, không đại diện cho role hay class có sẵn.
