@@ -12,7 +12,7 @@ argument-hint: Write a commit message for the staged changes.
 2. Run `scripts/get_staged_diff.sh` to get the staged changes.
 3. Read `references/conventions.md` and choose the appropriate type (feat, fix, chore, etc.).
 4. Fill in the template in `assets/commit-template.txt`. Use the exact branch name from step 1 and the appropriate type from step 3.
-5. Return one commit message without a lengthy explanation.
+5. Provide the commit message both as plain text and inside a git commit -m "" command, without a lengthy explanation.
 
 ## Notes
 
