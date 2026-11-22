@@ -1,12 +1,12 @@
 ---
-name: 'Generate-code-from-docs'
-description: 'Nhận tài liệu API và điều phối tạo mã NestJS từ tài liệu đó.'
-argument-hint: 'Cung cấp đường dẫn hoặc nội dung tài liệu; nêu phần cần tạo nếu không muốn tạo đầy đủ.'
+name: 'generate-code-from-docs'
+description: 'Gọi skill docs-to-code để tạo mã từ tài liệu API.'
+argument-hint: 'Đưa tài liệu API (đính kèm, nội dung hoặc đường dẫn); có thể thêm yêu cầu.'
 agent: 'agent'
 ---
 
-Nhận tài liệu API từ nội dung người dùng, tệp đính kèm hoặc đường dẫn được cung cấp. Nếu chỉ có đường dẫn, hãy đọc tài liệu đó trước khi thực hiện. Nếu không xác định được tài liệu hoặc phạm vi, hãy hỏi người dùng để làm rõ.
+Prompt này là điểm gọi skill `docs-to-code`. Khi người dùng gọi prompt và đưa tài liệu API (đính kèm, nội dung hoặc đường dẫn), hãy gọi skill để xử lý ngay; không yêu cầu thêm câu lệnh kích hoạt. Nếu tài liệu là đường dẫn, đọc tài liệu trước khi gọi skill. Nếu chưa có tài liệu, yêu cầu người dùng cung cấp.
 
-Dùng skill `docs-to-code` để điều phối việc tạo mã theo tài liệu. Mặc định tạo đầy đủ end-to-end, trừ khi người dùng chỉ định một phần. Tuân theo routing và quy tắc của skill; không tự tạo mã thay cho các skill con.
+Truyền mọi yêu cầu tùy chọn kèm theo cho skill làm phạm vi hoặc điều kiện thực hiện. Nếu người dùng không chỉ định phần cần tạo, mặc định chạy đầy đủ end-to-end; nếu họ yêu cầu một phần, để skill định tuyến đúng skill con. Tuân thủ quy trình, bước xác định chế độ và các yêu cầu xác nhận của skill; không tự sinh mã thay cho skill con.
 
-Sau khi hoàn tất, tóm tắt các phần đã tạo và kết quả kiểm tra.
+Sau khi skill hoàn tất, tóm tắt chế độ chạy, phần đã tạo/cập nhật, việc cần người dùng xác nhận và kết quả kiểm tra.
